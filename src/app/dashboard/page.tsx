@@ -1,52 +1,40 @@
 // MODULE_CONTRACT:
-// PURPOSE: [Отображает главную страницу дашборда. Содержит приветствие,
-//           кнопку для добавления данных и управляет видимостью модального окна.]
-// SCOPE: [UI, Дашборд.]
-// KEYWORDS_MODULE: [dashboard, ui, client-component, state-management]
-// LINKS_TO_MODULE: [components/ui/Modal.tsx]
+// PURPOSE: [Главная страница дашборда. Отображает сводку данных и предоставляет
+//           интерфейс для добавления новых записей.]
+// SCOPE: [UI, Дашборд, Ввод данных.]
+// KEYWORDS_MODULE: [ui, page, dashboard, client-component, data-display]
+// LINKS_TO_MODULE: [components/ui/Modal.tsx, components/AddDataForm.tsx, components/dashboard/NutritionSummaryWidget.tsx, app/actions.ts]
 // LINKS_TO_SPECIFICATION: [Development Plan: Этап 2]
 
-'use client';
-
-import { useState } from "react";
-import Modal from "../../components/ui/Modal";
+import { getDailyNutritionSummary } from '../actions';
+import AddDataMain from './_components/AddDataMain';
+import NutritionSummaryWidget from '../../components/dashboard/NutritionSummaryWidget';
 
 // START_COMPONENT_DashboardPage
 // CONTRACT:
-// PURPOSE: [Основной компонент страницы дашборда. Управляет состоянием модального окна
-//           и отображает основной контент страницы.]
-export default function DashboardPage() {
-    // START_STATE_MANAGEMENT: [Управление состоянием видимости модального окна.]
-    const [isModalOpen, setModalOpen] = useState(false);
-    // END_STATE_MANAGEMENT
+// PURPOSE: [Основной компонент страницы. Является серверным компонентом, который
+//           асинхронно загружает данные и рендерит дочерние клиентские компоненты.]
+export default async function DashboardPage() {
+    
+    // START_DATA_FETCHING_BLOCK: [Загрузка данных о питании при рендеринге страницы на сервере.]
+    const nutritionSummary = await getDailyNutritionSummary();
+    // END_DATA_FETCHING_BLOCK
 
-    // START_RENDER_BLOCK: [Рендеринг JSX компонента.]
+    // START_RENDER_BLOCK: [Рендеринг JSX страницы.]
     return (
-        <>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Главная Панель</h1>
-                <button 
-                    onClick={() => setModalOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"
-                >
-                    Добавить запись
-                </button>
-            </div>
-
-            <div className="bg-gray-800 p-6 rounded-lg">
-                <p>Добро пожаловать в ваш персональный дашборд здоровья!</p>
-                <p>Здесь будут отображаться виджеты с вашими данными.</p>
-            </div>
+        <div className="w-full">
+            <h1 className="text-3xl font-bold text-white mb-6">Главная Панель</h1>
             
-            <Modal 
-                isOpen={isModalOpen} 
-                onClose={() => setModalOpen(false)} 
-                title="Добавить новую запись"
-            >
-                {/* Здесь будет форма для добавления данных */}
-                <p className="text-gray-400">Форма для ввода данных появится на следующем шаге.</p>
-            </Modal>
-        </>
+            <div className="space-y-6">
+                {/* START_WIDGET_RENDERING_BLOCK: [Отображение виджета сводки по питанию.] */}
+                <NutritionSummaryWidget summary={nutritionSummary} />
+                {/* END_WIDGET_RENDERING_BLOCK */}
+
+                {/* START_ADD_DATA_COMPONENT_BLOCK: [Отображение основного клиентского компонента для добавления данных.] */}
+                <AddDataMain />
+                {/* END_ADD_DATA_COMPONENT_BLOCK */}
+            </div>
+        </div>
     );
     // END_RENDER_BLOCK
 }
