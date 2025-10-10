@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<KnowledgeGraph>
+  <Personal_Health_Dashboard_v1_Info VERSION="1.0-alpha">
+    <keywords>health_dashboard:10|nextjs:9|supabase:9|typescript:8|data_tracking:8|react:7</keywords>
+    <terms>personal_health|data_visualization|user_authentication|server_actions|vertical_slice_architecture</terms>
+    <annotation>Граф знаний для веб-приложения Personal Health Dashboard. Описывает архитектуру, основанную на Next.js App Router, и взаимодействие с Supabase для бэкенда. Основное внимание уделено сбору, отслеживанию и анализу персональных данных о здоровье.</annotation>
+
+    <!-- ==================================================================== -->
+    <!-- ======================= CORE APP STRUCTURE ======================= -->
+    <!-- ==================================================================== -->
+
+    <src_middleware_ts FILE="src/middleware.ts" TYPE="MIDDLEWARE_MODULE">
+      <keywords>middleware:10|session_management:9|authentication:8|cookies:7|nextjs:9</keywords>
+      <terms>request_interception|session_refresh|supabase_ssr</terms>
+      <annotation>Модуль middleware, который перехватывает все запросы для управления сессиями Supabase. Обновляет токены аутентификации в cookies, обеспечивая актуальность сессии для серверных компонентов.</annotation>
+      <USES_FRAMEWORK>Next.js:9</USES_FRAMEWORK>
+      <USES_LIBRARY>@supabase/ssr:9</USES_LIBRARY>
+
+      <src_middleware_middleware_FUNC NAME="middleware" TYPE="IS_FUNCTION_OF_MODULE">
+        <keywords>request_handler:9|session_update:8|response_chain:7</keywords>
+        <terms>NextRequest|NextResponse|supabase_client_creation</terms>
+        <annotation>Основная функция middleware. Создает серверный клиент Supabase в контексте запроса, вызывает getUser() для обновления сессии и передает управление дальше.</annotation>
+        <INPUT_PARAMS>request (NextRequest)</INPUT_PARAMS>
+        <OUTPUT_TYPE>NextResponse</OUTPUT_TYPE>
+        <OUTPUT_EFFECT>Может обновить аутентификационные cookie в HTTP-ответе.</OUTPUT_EFFECT>
+      </src_middleware_middleware_FUNC>
+    </src_middleware_ts>
+
+    <src_app_page_tsx FILE="src/app/page.tsx" TYPE="ENTRY_POINT_MODULE">
+      <keywords>entry_point:10|routing:9|redirect:9|server_component:8</keywords>
+      <terms>root_route|authentication_check|conditional_redirect</terms>
+      <annotation>Основная точка входа приложения (/). Не рендерит UI, а выполняет серверную логику перенаправления на /login или /dashboard в зависимости от статуса аутентификации пользователя.</annotation>
+      <USES_FRAMEWORK>Next.js:10</USES_FRAMEWORK>
+      
+      <src_app_page_HomePage_COMPONENT NAME="HomePage" TYPE="IS_FUNCTION_OF_MODULE">
+        <keywords>redirect_logic:9|session_check:8</keywords>
+        <terms>supabase_auth_getUser|next_navigation_redirect</terms>
+        <annotation>Серверный компонент, который получает сессию пользователя и выполняет редирект.</annotation>
+        <OUTPUT_TYPE>null (выполняет редирект)</OUTPUT_TYPE>
+        <CrossLinks>
+            <Link TARGET="lib_supabase_server_ts" TYPE="USES_SERVICE_FROM" RELEVANCE="9" DESCRIPTION="Для создания серверного клиента Supabase"/>
+        </CrossLinks>
+      </src_app_page_HomePage_COMPONENT>
+    </src_app_page_tsx>
+    
+    <src_app_login_page_tsx FILE="src/app/login/page.tsx" TYPE="AUTHENTICATION_UI_MODULE">
+      <keywords>login:10|authentication:9|ui:8|client_component:9</keywords>
+      <terms>sign_in_form|user_credentials|supabase_auth</terms>
+      <annotation>Модуль, отображающий страницу входа. Обрабатывает ввод email/пароля и взаимодействие с Supabase Auth для аутентификации пользователя.</annotation>
+      <USES_FRAMEWORK>Next.js:9|React:8</USES_FRAMEWORK>
+
+      <src_app_login_page_LoginPage_COMPONENT NAME="LoginPage" TYPE="IS_FUNCTION_OF_MODULE">
+        <keywords>login_form:9|state_management:8|event_handler:7</keywords>
+        <terms>useState|useRouter|form_submission</terms>
+        <annotation>Основной клиентский компонент страницы входа. Управляет состоянием формы, обрабатывает отправку данных и отображает ошибки.</annotation>
+        <OUTPUT_TYPE>JSX.Element</OUTPUT_TYPE>
+        <CrossLinks>
+            <Link TARGET="lib_supabase_client_ts" TYPE="USES_SERVICE_FROM" RELEVANCE="10" DESCRIPTION="Для создания клиентского клиента Supabase и вызова signInWithPassword"/>
+        </CrossLinks>
+      </src_app_login_page_LoginPage_COMPONENT>
+    </src_app_login_page_tsx>
+
+    <src_app_dashboard_layout_tsx FILE="src/app/dashboard/layout.tsx" TYPE="PROTECTED_LAYOUT_MODULE">
+      <keywords>dashboard_layout:10|protected_route:9|navigation_sidebar:8|server_component:9</keywords>
+      <terms>app_shell|main_layout|user_session_guard</terms>
+      <annotation>Создает основной каркас для всех защищенных страниц дашборда. Включает боковую панель навигации и проверяет аутентификацию пользователя перед рендерингом дочерних страниц.</annotation>
+      <USES_FRAMEWORK>Next.js:10</USES_FRAMEWORK>
+
+        <src_app_dashboard_layout_DashboardLayout_COMPONENT NAME="DashboardLayout" TYPE="IS_FUNCTION_OF_MODULE">
+            <keywords>layout:9|authentication_check:8|sidebar:7</keywords>
+            <terms>PropsWithChildren|async_component</terms>
+            <annotation>Асинхронный серверный компонент, который рендерит основной макет с боковой панелью после проверки сессии.</annotation>
+            <INPUT_PARAMS>children (React.ReactNode)</INPUT_PARAMS>
+            <OUTPUT_TYPE>JSX.Element</OUTPUT_TYPE>
+            <CrossLinks>
+                <Link TARGET="lib_supabase_server_ts" TYPE="USES_SERVICE_FROM" RELEVANCE="9" DESCRIPTION="Для проверки сессии пользователя на сервере"/>
+                <Link TARGET="src_app_auth_signout_route_ts" TYPE="CALLS_ENDPOINT_VIA_FORM" RELEVANCE="7" DESCRIPTION="Форма выхода вызывает эндпоинт signout"/>
+            </CrossLinks>
+        </src_app_dashboard_layout_DashboardLayout_COMPONENT>
+    </src_app_dashboard_layout_tsx>
+
+    <src_app_dashboard_page_tsx FILE="src/app/dashboard/page.tsx" TYPE="DASHBOARD_UI_MODULE">
+        <keywords>dashboard:10|data_visualization:9|server_component:8|widgets:8</keywords>
+        <terms>main_panel|summary_widgets|data_fetching</terms>
+        <annotation>Главная страница дашборда. Является серверным компонентом, который загружает необходимые данные и передает их клиентским виджетам для отображения.</annotation>
+        <USES_FRAMEWORK>Next.js:10</USES_FRAMEWORK>
+
+        <src_app_dashboard_page_DashboardPage_COMPONENT NAME="DashboardPage" TYPE="IS_FUNCTION_OF_MODULE">
+            <keywords>data_fetching:9|widget_composition:8</keywords>
+            <terms>async_component|server_side_fetch</terms>
+            <annotation>Серверный компонент, который загружает сводку по питанию и рендерит основные компоненты дашборда.</annotation>
+            <OUTPUT_TYPE>JSX.Element</OUTPUT_TYPE>
+            <CrossLinks>
+                <Link TARGET="src_app_actions_getDailyNutritionSummary_FUNC" TYPE="CALLS_FUNCTION" RELEVANCE="10" DESCRIPTION="Для получения сводки по питанию за день"/>
+                <Link TARGET="src_components_dashboard_NutritionSummaryWidget_tsx" TYPE="RENDERS_COMPONENT" RELEVANCE="9" DESCRIPTION="Отображает виджет сводки по питанию"/>
+                <Link TARGET="src_app_dashboard__components_AddDataMain_tsx" TYPE="RENDERS_COMPONENT" RELEVANCE="8" DESCRIPTION="Отображает кнопку добавления данных"/>
+            </CrossLinks>
+        </src_app_dashboard_page_DashboardPage_COMPONENT>
+    </src_app_dashboard_page_tsx>
+
+    <!-- ==================================================================== -->
+    <!-- ===================== SERVER ACTIONS & LOGIC ===================== -->
+    <!-- ==================================================================== -->
+
+    <src_app_actions_ts FILE="src/app/actions.ts" TYPE="SERVER_ACTIONS_MODULE">
+        <keywords>server_actions:10|business_logic:9|data_mutation:9|supabase:8|zod:8</keywords>
+        <terms>form_handling|database_interaction|data_validation|cache_revalidation</terms>
+        <annotation>Центральный модуль для всех серверных действий. Обрабатывает отправку форм, валидирует данные, взаимодействует с БД Supabase и инвалидирует кэш Next.js для обновления UI.</annotation>
+        <USES_LIBRARY>zod:9|next/cache:7</USES_LIBRARY>
+
+        <src_app_actions_addProduct_FUNC NAME="addProduct" TYPE="IS_FUNCTION_OF_MODULE">
+            <keywords>add_product:9|form_action:8|validation:8|db_insert:7</keywords>
+            <terms>useFormState|FormData|revalidatePath</terms>
+            <annotation>Server Action для добавления нового продукта в справочник пользователя.</annotation>
+            <INPUT_PARAMS>previousState (FormState), formData (FormData)</INPUT_PARAMS>
+            <OUTPUT_TYPE>Promise&lt;FormState&gt;</OUTPUT_TYPE>
+        </src_app_actions_addProduct_FUNC>
+
+        <src_app_actions_addFoodLog_FUNC NAME="addFoodLog" TYPE="IS_FUNCTION_OF_MODULE">
+            <keywords>add_food_log:9|form_action:8|validation:8|db_insert:7</keywords>
+            <terms>useFormState|FormData|revalidatePath</terms>
+            <annotation>Server Action для записи приема пищи в журнал.</annotation>
+            <INPUT_PARAMS>previousState (FormState), formData (FormData)</INPUT_PARAMS>
+            <OUTPUT_TYPE>Promise&lt;FormState&gt;</OUTPUT_TYPE>
+        </src_app_actions_addFoodLog_FUNC>
+        
+        <src_app_actions_getProducts_FUNC NAME="getProducts" TYPE="IS_FUNCTION_OF_MODULE">
+            <keywords>get_products:9|data_fetch:8|db_select:7</keywords>
+            <terms>select_query|user_specific_data</terms>
+            <annotation>Server Action для получения списка всех продуктов текущего пользователя.</annotation>
+            <OUTPUT_TYPE>Promise&lt;{id: string, name: string}[]&gt;</OUTPUT_TYPE>
+        </src_app_actions_getProducts_FUNC>
+
+        <src_app_actions_getDailyNutritionSummary_FUNC NAME="getDailyNutritionSummary" TYPE="IS_FUNCTION_OF_MODULE">
+            <keywords>nutrition_summary:10|data_aggregation:9|calculation:8|db_query:8</keywords>
+            <terms>daily_summary|calories_calculation|macros_aggregation</terms>
+            <annotation>Извлекает все записи о приемах пищи за текущий день, агрегирует данные и рассчитывает итоговую сумму КБЖУ.</annotation>
+            <OUTPUT_TYPE>Promise&lt;NutritionSummary&gt;</OUTPUT_TYPE>
+        </src_app_actions_getDailyNutritionSummary_FUNC>
+    </src_app_actions_ts>
+
+    <!-- ==================================================================== -->
+    <!-- ======================== UI COMPONENTS =========================== -->
+    <!-- ==================================================================== -->
+
+    <src_app_dashboard__components_AddDataMain_tsx FILE="src/app/dashboard/_components/AddDataMain.tsx" TYPE="UI_CONTROLLER_MODULE">
+        <keywords>modal_trigger:9|floating_button:8|ui_controller:9</keywords>
+        <terms>client_component|useState|modal_window</terms>
+        <annotation>Компонент, который отображает плавающую кнопку 'Добавить запись' и управляет открытием/закрытием модального окна для ввода данных.</annotation>
+        <USES_FRAMEWORK>React:9</USES_FRAMEWORK>
+        <CrossLinks>
+            <Link TARGET="src_components_ui_Modal_tsx" TYPE="RENDERS_COMPONENT" RELEVANCE="9" DESCRIPTION="Отображает компонент модального окна"/>
+            <Link TARGET="src_components_AddDataForm_tsx" TYPE="RENDERS_COMPONENT" RELEVANCE="9" DESCRIPTION="Вставляет форму добавления данных в модальное окно"/>
+        </CrossLinks>
+    </src_app_dashboard__components_AddDataMain_tsx>
+
+    <src_components_AddDataForm_tsx FILE="src/components/AddDataForm.tsx" TYPE="UI_ROUTER_MODULE">
+        <keywords>form_router:10|conditional_rendering:9|data_entry:8</keywords>
+        <terms>client_component|useState|form_selection</terms>
+        <annotation>Компонент-маршрутизатор. Позволяет пользователю выбрать тип добавляемых данных (еда, продукт и т.д.) и отображает соответствующую форму.</annotation>
+        <USES_FRAMEWORK>React:9</USES_FRAMEWORK>
+        <CrossLinks>
+            <Link TARGET="src_components_forms_AddProductForm_tsx" TYPE="CONDITIONALLY_RENDERS" RELEVANCE="9" DESCRIPTION="Отображает форму добавления продукта"/>
+            <Link TARGET="src_components_forms_AddFoodLogForm_tsx" TYPE="CONDITIONALLY_RENDERS" RELEVANCE="9" DESCRIPTION="Отображает форму логирования еды"/>
+        </CrossLinks>
+    </src_components_AddDataForm_tsx>
+    
+    <src_components_forms_AddProductForm_tsx FILE="src/components/forms/AddProductForm.tsx" TYPE="UI_FORM_MODULE">
+        <keywords>add_product_form:10|ui_form:9|client_component:8</keywords>
+        <terms>useFormState|useFormStatus|data_input</terms>
+        <annotation>Компонент, содержащий HTML-форму для добавления нового продукта в справочник. Взаимодействует с Server Action 'addProduct'.</annotation>
+        <USES_FRAMEWORK>React:9 (react-dom)</USES_FRAMEWORK>
+        <CrossLinks>
+            <Link TARGET="src_app_actions_addProduct_FUNC" TYPE="CALLS_FUNCTION_VIA_FORM" RELEVANCE="10" DESCRIPTION="Форма вызывает этот Server Action при отправке"/>
+        </CrossLinks>
+    </src_components_forms_AddProductForm_tsx>
+
+    <src_components_forms_AddFoodLogForm_tsx FILE="src/components/forms/AddFoodLogForm.tsx" TYPE="UI_FORM_MODULE">
+        <keywords>add_food_log_form:10|ui_form:9|client_component:8</keywords>
+        <terms>useFormState|useEffect|data_fetching|data_input</terms>
+        <annotation>Компонент с формой для записи приема пищи. Динамически загружает список продуктов пользователя и отправляет данные в Server Action 'addFoodLog'.</annotation>
+        <USES_FRAMEWORK>React:9 (react-dom)</USES_FRAMEWORK>
+        <CrossLinks>
+            <Link TARGET="src_app_actions_addFoodLog_FUNC" TYPE="CALLS_FUNCTION_VIA_FORM" RELEVANCE="10" DESCRIPTION="Форма вызывает этот Server Action при отправке"/>
+            <Link TARGET="src_app_actions_getProducts_FUNC" TYPE="CALLS_FUNCTION" RELEVANCE="9" DESCRIPTION="Вызывает для получения списка продуктов для селектора"/>
+        </CrossLinks>
+    </src_components_forms_AddFoodLogForm_tsx>
+
+    <src_components_dashboard_NutritionSummaryWidget_tsx FILE="src/components/dashboard/NutritionSummaryWidget.tsx" TYPE="UI_WIDGET_MODULE">
+        <keywords>nutrition_widget:10|data_visualization:9|pie_chart:8|dashboard:8</keywords>
+        <terms>recharts|client_component|macros_breakdown</terms>
+        <annotation>Виджет для дашборда, который отображает итоговую информацию по питанию за день (КБЖУ) в виде карточек и круговой диаграммы.</annotation>
+        <USES_LIBRARY>recharts:10</USES_LIBRARY>
+    </src_components_dashboard_NutritionSummaryWidget_tsx>
+
+    <!-- ==================================================================== -->
+    <!-- ======================= SUPABASE & UTILS ======================= -->
+    <!-- ==================================================================== -->
+
+    <lib_supabase_client_ts FILE="lib/supabase/client.ts" TYPE="UTILITY_MODULE">
+        <keywords>supabase_client:10|utility:8|singleton:7</keywords>
+        <terms>client_side_supabase|browser_context</terms>
+        <annotation>Создает и экспортирует синглтон-экземпляр клиента Supabase для использования в клиентских компонентах (в браузере).</annotation>
+        <USES_LIBRARY>@supabase/ssr:9</USES_LIBRARY>
+    </lib_supabase_client_ts>
+    
+    <lib_supabase_server_ts FILE="lib/supabase/server.ts" TYPE="UTILITY_MODULE">
+        <keywords>supabase_server:10|utility:8|server_context:9</keywords>
+        <terms>server_side_supabase|cookie_management|server_actions_context</terms>
+        <annotation>Создает и экспортирует клиент Supabase для использования в серверном контексте (Server Components, Server Actions, Route Handlers), управляя cookies.</annotation>
+        <USES_LIBRARY>@supabase/ssr:9</USES_LIBRARY>
+    </lib_supabase_server_ts>
+    
+    <src_app_auth_signout_route_ts FILE="src/app/auth/signout/route.ts" TYPE="API_ROUTE_HANDLER_MODULE">
+        <keywords>signout:10|api_route:9|authentication:8</keywords>
+        <terms>session_termination|redirect|POST_handler</terms>
+        <annotation>Обработчик маршрута API (Route Handler) для выхода пользователя из системы. Вызывает supabase.auth.signOut() и перенаправляет на главную страницу.</annotation>
+        <USES_FRAMEWORK>Next.js:9</USES_FRAMEWORK>
+        <CrossLinks>
+            <Link TARGET="lib_supabase_server_ts" TYPE="USES_SERVICE_FROM" RELEVANCE="9" DESCRIPTION="Для вызова signOut в серверном контексте"/>
+        </CrossLinks>
+    </src_app_auth_signout_route_ts>
+
+    <!-- ==================================================================== -->
+    <!-- ====================== PROJECT CROSS-LINKS ======================= -->
+    <!-- ==================================================================== -->
+    
+    <ProjectCrossLinks TYPE="MODULE_INTERACTIONS_OVERVIEW">
+      <Link FROM_MODULE_TAG="src_app_dashboard_page_tsx" TO_MODULE_TAG="src_app_actions_ts" TYPE="FETCHES_DATA_USING" RELEVANCE="10"/>
+      <Link FROM_MODULE_TAG="src_components_forms_AddFoodLogForm_tsx" TO_MODULE_TAG="src_app_actions_ts" TYPE="MUTATES_DATA_USING" RELEVANCE="10"/>
+      <Link FROM_MODULE_TAG="src_components_forms_AddProductForm_tsx" TO_MODULE_TAG="src_app_actions_ts" TYPE="MUTATES_DATA_USING" RELEVANCE="10"/>
+      <Link FROM_MODULE_TAG="src_app_dashboard_page_tsx" TO_MODULE_TAG="src_components_dashboard_NutritionSummaryWidget_tsx" TYPE="PROVIDES_DATA_TO" RELEVANCE="9"/>
+      <Link FROM_MODULE_TAG="src_middleware_ts" TO_MODULE_TAG="lib_supabase_server_ts" TYPE="DEPENDS_ON_FOR_CLIENT_CREATION" RELEVANCE="9"/>
+      <Link FROM_MODULE_TAG="src_app_page_tsx" TO_MODULE_TAG="src_app_dashboard_layout_tsx" TYPE="REDIRECTS_TO" RELEVANCE="8"/>
+      <Link FROM_MODULE_TAG="src_app_page_tsx" TO_MODULE_TAG="src_app_login_page_tsx" TYPE="REDIRECTS_TO" RELEVANCE="8"/>
+    </ProjectCrossLinks>
+
+  </Personal_Health_Dashboard_v1_Info>
+</KnowledgeGraph>

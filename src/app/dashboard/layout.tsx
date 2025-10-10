@@ -35,18 +35,49 @@ export default async function DashboardLayout({ children }: PropsWithChildren) {
                 <div className="text-2xl font-bold mb-8">HealthApp</div>
                 <nav>
                     <ul>
+                        {/* START_NAV_ITEM_DASHBOARD */}
                         <li className="mb-4">
                             <a href="/dashboard" className="flex items-center p-2 text-base font-normal text-white rounded-lg bg-gray-700">
-                                {/* Иконку можно будет добавить позже с помощью lucide-react */}
                                 <span className="ml-3">Дашборд</span>
                             </a>
                         </li>
-                         <li className="mb-4">
+                        {/* END_NAV_ITEM_DASHBOARD */}
+
+                        {/* START_NAV_ITEM_NUTRITION */}
+                        <li className="mb-4">
+                            <a href="/dashboard/nutrition" className="flex items-center p-2 text-base font-normal text-gray-400 rounded-lg hover:bg-gray-700">
+                                <span className="ml-3">Питание</span>
+                            </a>
+                        </li>
+                        {/* END_NAV_ITEM_NUTRITION */}
+
+                        {/* START_NAV_DROPDOWN_REFERENCES */}
+                        <li className="mb-4">
+                            {/* In a real component, this would be a dropdown/accordion */}
+                            <span className="flex items-center p-2 text-base font-normal text-gray-500 rounded-lg">
+                                <span className="ml-3 font-semibold">Справочники</span>
+                            </span>
+                            <ul className="pl-4 mt-2 space-y-2">
+                                <li>
+                                    <a href="/dashboard/products" className="flex items-center p-2 text-sm font-normal text-gray-400 rounded-lg hover:bg-gray-700">
+                                        <span className="ml-3">Продукты</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/dashboard/recipes" className="flex items-center p-2 text-sm font-normal text-gray-400 rounded-lg hover:bg-gray-700">
+                                        <span className="ml-3">Рецепты</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        {/* END_NAV_DROPDOWN_REFERENCES */}
+                        
+                        <li className="mb-4">
                             <a href="#" className="flex items-center p-2 text-base font-normal text-gray-400 rounded-lg hover:bg-gray-700">
                                 <span className="ml-3">Цели</span>
                             </a>
                         </li>
-                         <li className="mb-4">
+                        <li className="mb-4">
                             <a href="#" className="flex items-center p-2 text-base font-normal text-gray-400 rounded-lg hover:bg-gray-700">
                                 <span className="ml-3">История</span>
                             </a>
