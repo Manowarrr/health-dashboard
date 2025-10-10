@@ -7,6 +7,7 @@
 import { Suspense } from 'react';
 import ProductsTable from '../../../components/dashboard/ProductsTable';
 import ProductSearch from '../../../components/dashboard/ProductSearch';
+import AddProductButton from '../../../components/dashboard/AddProductButton';
 
 // START_COMPONENT_ProductsPage
 // CONTRACT:
@@ -25,7 +26,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: { 
             
             <div className="flex justify-between items-center">
                 <ProductSearch />
-                {/* "Add Product" button will be added here */}
+                <AddProductButton />
             </div>
 
             <Suspense key={query} fallback={<p>Загрузка таблицы продуктов...</p>}>

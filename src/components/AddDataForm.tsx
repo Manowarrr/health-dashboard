@@ -23,9 +23,9 @@ type DataType = 'food' | 'workout' | 'sleep' | 'product' | null;
 // CONTRACT:
 // PURPOSE: [Главный компонент формы. Управляет внутренним состоянием для выбора типа данных
 //           и рендерит либо меню выбора, либо конкретную форму.]
-export default function AddDataForm() {
+export default function AddDataForm({ initialType = null }: { initialType?: DataType }) {
     // START_STATE_MANAGEMENT: [Состояние для отслеживания выбранного типа данных.]
-    const [selectedType, setSelectedType] = useState<DataType>(null);
+    const [selectedType, setSelectedType] = useState<DataType>(initialType);
     // END_STATE_MANAGEMENT
 
     // START_RENDER_BLOCK: [Рендеринг JSX компонента.]
