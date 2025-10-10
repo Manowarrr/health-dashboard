@@ -5,8 +5,8 @@
 // LINKS_TO_SPECIFICATION: [Development Plan: 2.3]
 
 import { getRecipes, Recipe } from "../../app/actions";
-// import DeleteRecipeButton from "./DeleteRecipeButton";
-// import EditRecipeButton from "./EditRecipeButton";
+import DeleteRecipeButton from "./DeleteRecipeButton";
+import EditRecipeButton from "./EditRecipeButton";
 
 // START_COMPONENT_RecipesTable
 // CONTRACT:
@@ -31,7 +31,10 @@ export default async function RecipesTable({ query }: { query: string }) {
                 <thead className="text-xs uppercase bg-gray-700 text-gray-400">
                     <tr>
                         <th scope="col" className="py-3 px-6">Название</th>
-                        <th scope="col" className="py-3 px-6">Дата создания</th>
+                        <th scope="col" className="py-3 px-6">Калории (всего)</th>
+                        <th scope="col" className="py-3 px-6">Белки (всего)</th>
+                        <th scope="col" className="py-3 px-6">Жиры (всего)</th>
+                        <th scope="col" className="py-3 px-6">Углеводы (всего)</th>
                         <th scope="col" className="py-3 px-6">
                             <span className="sr-only">Действия</span>
                         </th>
@@ -43,10 +46,13 @@ export default async function RecipesTable({ query }: { query: string }) {
                             <th scope="row" className="py-4 px-6 font-medium whitespace-nowrap text-white">
                                 {recipe.name}
                             </th>
-                            <td className="py-4 px-6">{new Date(recipe.created_at).toLocaleDateString()}</td>
+                            <td className="py-4 px-6">{recipe.total_calories.toFixed(0)}</td>
+                            <td className="py-4 px-6">{recipe.total_protein.toFixed(1)}</td>
+                            <td className="py-4 px-6">{recipe.total_fat.toFixed(1)}</td>
+                            <td className="py-4 px-6">{recipe.total_carbs.toFixed(1)}</td>
                             <td className="py-4 px-6 text-right space-x-4">
-                                {/* <EditRecipeButton recipe={recipe} /> */}
-                                {/* <DeleteRecipeButton recipeId={recipe.id} /> */}
+                                <EditRecipeButton recipe={recipe} />
+                                <DeleteRecipeButton recipeId={recipe.id} />
                             </td>
                         </tr>
                     ))}

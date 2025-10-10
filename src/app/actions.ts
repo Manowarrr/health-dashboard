@@ -427,7 +427,10 @@ export async function updateProduct(productId: string, previousState: FormState,
 export type Recipe = {
     id: string;
     name: string;
-    created_at: string;
+    total_calories: number;
+    total_protein: number;
+    total_fat: number;
+    total_carbs: number;
 };
 // END_TYPE_DEFINITION_Recipe
 
@@ -443,25 +446,86 @@ export async function getRecipes(query?: string): Promise<Recipe[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    let queryBuilder = supabase
+    // START_BASE_RECIPE_FETCH_BLOCK: [Получение базового списка рецептов с фильтрацией.]
+    let recipeQuery = supabase
         .from('recipes')
-        .select('id, name, created_at')
+        .select('id, name')
         .eq('user_id', user.id);
 
-    // START_QUERY_FILTERING_BLOCK: [Если есть поисковый запрос, добавляем фильтр ilike.]
     if (query) {
-        queryBuilder = queryBuilder.ilike('name', `%${query}%`);
+        recipeQuery = recipeQuery.ilike('name', `%${query}%`);
     }
-    // END_QUERY_FILTERING_BLOCK
 
-    const { data, error } = await queryBuilder.order('name', { ascending: true });
+    const { data: recipes, error: recipesError } = await recipeQuery.order('name', { ascending: true });
 
-    if (error) {
-        console.error('Database Error:', error.message);
+    if (recipesError) {
+        console.error('Database Error fetching recipes:', recipesError.message);
         throw new Error('Не удалось загрузить рецепты.');
     }
+    // END_BASE_RECIPE_FETCH_BLOCK
+
+    // START_NUTRITION_CALCULATION_BLOCK: [Расчет КБЖУ для каждого рецепта.]
+    const recipeIds = recipes.map(r => r.id);
+    if (recipeIds.length === 0) return [];
+
+    const { data: ingredients, error: ingredientsError } = await supabase
+        .from('recipe_products')
+        .select(`
+            recipe_id,
+            weight_grams,
+            products (
+                calories_per_100g,
+                protein_per_100g,
+                fat_per_100g,
+                carbs_per_100g
+            )
+        `)
+        .in('recipe_id', recipeIds);
+
+    if (ingredientsError) {
+        console.error('Database Error fetching ingredients:', ingredientsError.message);
+        throw new Error('Не удалось загрузить ингредиенты для расчета.');
+    }
+
+    const nutritionMap = new Map<string, Omit<Recipe, 'id' | 'name' | 'created_at'>>();
+
+    for (const ingredient of ingredients) {
+        if (!ingredient.products) continue;
+
+        const recipeId = ingredient.recipe_id;
+        const product = ingredient.products as unknown as Product; // Type assertion
+        const ratio = ingredient.weight_grams / 100;
+
+        const current = nutritionMap.get(recipeId) || {
+            total_calories: 0,
+            total_protein: 0,
+            total_fat: 0,
+            total_carbs: 0,
+        };
+
+        current.total_calories += product.calories_per_100g * ratio;
+        current.total_protein += product.protein_per_100g * ratio;
+        current.total_fat += product.fat_per_100g * ratio;
+        current.total_carbs += product.carbs_per_100g * ratio;
+
+        nutritionMap.set(recipeId, current);
+    }
+
+    const recipesWithNutrition: Recipe[] = recipes.map(recipe => {
+        const nutrition = nutritionMap.get(recipe.id) || {
+            total_calories: 0,
+            total_protein: 0,
+            total_fat: 0,
+            total_carbs: 0,
+        };
+        return {
+            ...recipe,
+            ...nutrition,
+        };
+    });
+    // END_NUTRITION_CALCULATION_BLOCK
     
-    return data;
+    return recipesWithNutrition;
 }
 // END_SERVER_ACTION_getRecipes
 
@@ -558,3 +622,182 @@ export async function addRecipe(previousState: FormState, formData: FormData): P
     return { message: `Рецепт "${validatedFields.data.name}" успешно добавлен!` };
 }
 // END_SERVER_ACTION_addRecipe
+
+
+// START_SERVER_ACTION_deleteRecipe
+// CONTRACT:
+// PURPOSE: [Удаляет рецепт и все связанные с ним ингредиенты.]
+// INPUTS:
+//   - recipeId: string - ID рецепта для удаления.
+// SIDE_EFFECTS:
+//   - Удаляет запись из таблицы 'recipes'. Связанные записи в 'recipe_products' удаляются каскадно.
+//   - Вызывает revalidatePath для обновления UI.
+export async function deleteRecipe(recipeId: string) {
+    // START_VALIDATION_BLOCK: [Проверка наличия ID рецепта.]
+    if (!recipeId) {
+        return { message: 'Ошибка: ID рецепта не предоставлен.' };
+    }
+    // END_VALIDATION_BLOCK
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { message: 'Ошибка: Пользователь не авторизован.' };
+    }
+
+    // START_DB_DELETE_BLOCK: [Удаление рецепта из базы данных. Ингредиенты удаляются каскадно.]
+    const { error } = await supabase
+        .from('recipes')
+        .delete()
+        .match({ id: recipeId, user_id: user.id });
+
+    if (error) {
+        return { message: `Ошибка базы данных: ${error.message}` };
+    }
+    // END_DB_DELETE_BLOCK
+
+    revalidatePath('/dashboard/recipes');
+    return { message: 'Рецепт успешно удален.' };
+}
+// END_SERVER_ACTION_deleteRecipe
+
+
+// START_SERVER_ACTION_updateRecipe
+// CONTRACT:
+// PURPOSE: [Обновляет существующий рецепт и его состав.]
+// INPUTS:
+//   - recipeId: string - ID рецепта для обновления.
+//   - previousState: FormState - Предыдущее состояние формы.
+//   - formData: FormData - Данные, отправленные из формы.
+// SIDE_EFFECTS:
+//   - Обновляет запись в 'recipes' и перезаписывает связанные ингредиенты в 'recipe_products'.
+//   - Вызывает revalidatePath для обновления UI.
+export async function updateRecipe(recipeId: string, previousState: FormState, formData: FormData): Promise<FormState> {
+    if (!recipeId) {
+        return { message: 'Ошибка: ID рецепта не предоставлен.' };
+    }
+
+    // START_DATA_TRANSFORMATION_BLOCK: [Преобразование данных формы в структурированный объект.]
+    const rawData: { name: string; ingredients: { productId: string; weight: string }[] } = {
+        name: formData.get('name') as string,
+        ingredients: [],
+    };
+
+    formData.forEach((value, key) => {
+        const match = key.match(/ingredients\[(\d+)\]\[(productId|weight)\]/);
+        if (match) {
+            const index = parseInt(match[1], 10);
+            const field = match[2];
+            if (!rawData.ingredients[index]) {
+                rawData.ingredients[index] = { productId: '', weight: '' };
+            }
+            (rawData.ingredients[index] as any)[field] = value;
+        }
+    });
+    // END_DATA_TRANSFORMATION_BLOCK
+
+    // START_VALIDATION_BLOCK: [Валидация входящих данных формы с помощью Zod.]
+    const validatedFields = addRecipeSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+        return {
+            message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
+            errors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+    // END_VALIDATION_BLOCK
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { message: 'Ошибка: Пользователь не авторизован.' };
+    }
+
+    // START_TRANSACTION_BLOCK: [Обновление рецепта и его ингредиентов.]
+    // 1. Update the recipe name
+    const { error: recipeError } = await supabase
+        .from('recipes')
+        .update({ name: validatedFields.data.name })
+        .match({ id: recipeId, user_id: user.id });
+
+    if (recipeError) {
+        return { message: `Ошибка базы данных при обновлении рецепта: ${recipeError.message}` };
+    }
+
+    // 2. Delete old ingredients
+    const { error: deleteError } = await supabase
+        .from('recipe_products')
+        .delete()
+        .match({ recipe_id: recipeId, user_id: user.id });
+
+    if (deleteError) {
+        return { message: `Ошибка базы данных при удалении старых ингредиентов: ${deleteError.message}` };
+    }
+
+    // 3. Insert new ingredients if they exist
+    if (validatedFields.data.ingredients && validatedFields.data.ingredients.length > 0) {
+        const ingredientsToInsert = validatedFields.data.ingredients
+            .filter(ing => ing.productId && ing.weight > 0) // Ensure ingredients are valid
+            .map(ing => ({
+                recipe_id: recipeId,
+                product_id: ing.productId,
+                weight_grams: ing.weight,
+                user_id: user.id,
+            }));
+
+        if (ingredientsToInsert.length > 0) {
+            const { error: ingredientsError } = await supabase
+                .from('recipe_products')
+                .insert(ingredientsToInsert);
+
+            if (ingredientsError) {
+                return { message: `Ошибка базы данных при добавлении новых ингредиентов: ${ingredientsError.message}` };
+            }
+        }
+    }
+    // END_TRANSACTION_BLOCK
+
+    revalidatePath('/dashboard/recipes');
+    return { message: `Рецепт "${validatedFields.data.name}" успешно обновлен!` };
+}
+// END_SERVER_ACTION_updateRecipe
+
+
+// START_TYPE_DEFINITION_RecipeIngredient
+// CONTRACT:
+// PURPOSE: [Определяет структуру объекта ингредиента рецепта.]
+export type RecipeIngredient = {
+    product_id: string;
+    weight_grams: number;
+};
+// END_TYPE_DEFINITION_RecipeIngredient
+
+
+// START_SERVER_ACTION_getRecipeIngredients
+// CONTRACT:
+// PURPOSE: [Извлекает список ингредиентов для конкретного рецепта.]
+// INPUTS:
+//   - recipeId: string - ID рецепта.
+// OUTPUTS:
+//   - Promise<RecipeIngredient[]> - Массив объектов ингредиентов.
+export async function getRecipeIngredients(recipeId: string): Promise<RecipeIngredient[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+        .from('recipe_products')
+        .select('product_id, weight_grams')
+        .eq('recipe_id', recipeId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Database Error:', error.message);
+        throw new Error('Не удалось загрузить ингредиенты рецепта.');
+    }
+    
+    return data;
+}
+// END_SERVER_ACTION_getRecipeIngredients
