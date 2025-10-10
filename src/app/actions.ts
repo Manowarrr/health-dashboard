@@ -114,26 +114,49 @@ export async function addProduct(previousState: FormState, formData: FormData): 
 // END_SERVER_ACTION_addProduct
 
 
+// START_TYPE_DEFINITION_Product
+// CONTRACT:
+// PURPOSE: [Определяет структуру объекта продукта для использования в UI.]
+export type Product = {
+    id: string;
+    name: string;
+    calories_per_100g: number;
+    protein_per_100g: number;
+    fat_per_100g: number;
+    carbs_per_100g: number;
+};
+// END_TYPE_DEFINITION_Product
+
 // START_SERVER_ACTION_getProducts
 // CONTRACT:
-// PURPOSE: [Извлекает список всех продуктов, добавленных текущим пользователем.]
+// PURPOSE: [Извлекает список всех продуктов, добавленных текущим пользователем, с возможностью фильтрации по названию.]
+// INPUTS:
+//   - query: string (optional) - Строка для поиска по названию продукта.
 // OUTPUTS:
-//   - Promise<{id: string, name: string}[]> - Массив объектов продуктов.
-export async function getProducts(): Promise<{id: string, name: string}[]> {
+//   - Promise<Product[]> - Массив объектов продуктов.
+export async function getProducts(query?: string): Promise<Product[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data, error } = await supabase
+    let queryBuilder = supabase
         .from('products')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .order('name', { ascending: true });
+        .select('id, name, calories_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g')
+        .eq('user_id', user.id);
+
+    // START_QUERY_FILTERING_BLOCK: [Если есть поисковый запрос, добавляем фильтр ilike.]
+    if (query) {
+        queryBuilder = queryBuilder.ilike('name', `%${query}%`);
+    }
+    // END_QUERY_FILTERING_BLOCK
+
+    const { data, error } = await queryBuilder.order('name', { ascending: true });
 
     if (error) {
         console.error('Database Error:', error.message);
-        return [];
+        throw new Error('Не удалось загрузить продукты.');
     }
+    
     return data;
 }
 // END_SERVER_ACTION_getProducts
