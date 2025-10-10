@@ -133,6 +133,62 @@ export default function AddProductForm({ onBack }: { onBack: () => void }) {
                 </div>
                 {/* END_MACRO_GRID */}
 
+                {/* START_OPTIONAL_MACRO_GRID: [Сетка для ввода опциональных макронутриентов.] */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* START_FIELD_fiber: [Поле для ввода клетчатки.] */}
+                    <div>
+                        <label htmlFor="fiber" className="block text-sm font-medium text-gray-400">Клетчатка (г)</label>
+                        <input
+                            id="fiber"
+                            name="fiber"
+                            type="number"
+                            step="0.1"
+                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                    {/* END_FIELD_fiber */}
+
+                    {/* START_FIELD_sugar: [Поле для ввода сахара.] */}
+                    <div>
+                        <label htmlFor="sugar" className="block text-sm font-medium text-gray-400">Сахар (г)</label>
+                        <input
+                            id="sugar"
+                            name="sugar"
+                            type="number"
+                            step="0.1"
+                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                    {/* END_FIELD_sugar */}
+
+                    {/* START_FIELD_alcohol: [Поле для ввода алкоголя.] */}
+                    <div>
+                        <label htmlFor="alcohol" className="block text-sm font-medium text-gray-400">Алкоголь (г)</label>
+                        <input
+                            id="alcohol"
+                            name="alcohol"
+                            type="number"
+                            step="0.1"
+                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                    {/* END_FIELD_alcohol */}
+
+                    {/* START_FIELD_caffeine: [Поле для ввода кофеина.] */}
+                    <div>
+                        <label htmlFor="caffeine" className="block text-sm font-medium text-gray-400">Кофеин (мг)</label>
+                        <input
+                            id="caffeine"
+                            name="caffeine"
+                            type="number"
+                            step="0.1"
+                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                    {/* END_FIELD_caffeine */}
+                </div>
+                {/* END_OPTIONAL_MACRO_GRID */}
+
                 <SubmitButton />
             </form>
             {/* END_FORM_BLOCK */}

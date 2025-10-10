@@ -20,6 +20,10 @@ const addProductSchema = z.object({
     protein: z.coerce.number().min(0, { message: 'Значение не может быть отрицательным'}),
     fat: z.coerce.number().min(0, { message: 'Значение не может быть отрицательным'}),
     carbs: z.coerce.number().min(0, { message: 'Значение не может быть отрицательным'}),
+    fiber: z.coerce.number().min(0, { message: 'Значение не может быть отрицательным'}).optional(),
+    sugar: z.coerce.number().min(0, { message: 'Значение не может быть отрицательным'}).optional(),
+    alcohol: z.coerce.number().min(0, { message: 'Значение не может быть отрицательным'}).optional(),
+    caffeine: z.coerce.number().min(0, { message: 'Значение не может быть отрицательным'}).optional(),
 });
 // END_ZOD_SCHEMA_addProductSchema
 
@@ -64,6 +68,10 @@ export async function addProduct(previousState: FormState, formData: FormData): 
         protein: formData.get('protein'),
         fat: formData.get('fat'),
         carbs: formData.get('carbs'),
+        fiber: formData.get('fiber'),
+        sugar: formData.get('sugar'),
+        alcohol: formData.get('alcohol'),
+        caffeine: formData.get('caffeine'),
     });
 
     if (!validatedFields.success) {
@@ -97,10 +105,10 @@ export async function addProduct(previousState: FormState, formData: FormData): 
         protein_per_100g: validatedFields.data.protein,
         fat_per_100g: validatedFields.data.fat,
         carbs_per_100g: validatedFields.data.carbs,
-        fiber_per_100g: 0,
-        sugar_per_100g: 0,
-        alcohol_per_100g: 0,
-        caffeine_per_100g_mg: 0,
+        fiber_per_100g: validatedFields.data.fiber || 0,
+        sugar_per_100g: validatedFields.data.sugar || 0,
+        alcohol_per_100g: validatedFields.data.alcohol || 0,
+        caffeine_per_100g_mg: validatedFields.data.caffeine || 0,
     });
 
     if (error) {
@@ -124,6 +132,10 @@ export type Product = {
     protein_per_100g: number;
     fat_per_100g: number;
     carbs_per_100g: number;
+    fiber_per_100g?: number;
+    sugar_per_100g?: number;
+    alcohol_per_100g?: number;
+    caffeine_per_100g_mg?: number;
 };
 // END_TYPE_DEFINITION_Product
 
@@ -141,7 +153,7 @@ export async function getProducts(query?: string): Promise<Product[]> {
 
     let queryBuilder = supabase
         .from('products')
-        .select('id, name, calories_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g')
+        .select('id, name, calories_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g, sugar_per_100g, alcohol_per_100g, caffeine_per_100g_mg')
         .eq('user_id', user.id);
 
     // START_QUERY_FILTERING_BLOCK: [Если есть поисковый запрос, добавляем фильтр ilike.]
@@ -278,3 +290,111 @@ export async function getDailyNutritionSummary(): Promise<NutritionSummary> {
 }
 // END_SERVER_ACTION_getDailyNutritionSummary
 
+
+// START_SERVER_ACTION_deleteProduct
+// CONTRACT:
+// PURPOSE: [Удаляет продукт из справочника пользователя по его ID.]
+// INPUTS:
+//   - productId: string - ID продукта, который необходимо удалить.
+// SIDE_EFFECTS:
+//   - Удаляет запись из таблицы 'products' в Supabase.
+//   - Вызывает revalidatePath для обновления UI.
+export async function deleteProduct(productId: string) {
+    // START_VALIDATION_BLOCK: [Проверка наличия ID продукта.]
+    if (!productId) {
+        return { message: 'Ошибка: ID продукта не предоставлен.' };
+    }
+    // END_VALIDATION_BLOCK
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { message: 'Ошибка: Пользователь не авторизован.' };
+    }
+
+    // START_DB_DELETE_BLOCK: [Удаление продукта из базы данных.]
+    const { error } = await supabase
+        .from('products')
+        .delete()
+        .match({ id: productId, user_id: user.id });
+
+    if (error) {
+        return { message: `Ошибка базы данных: ${error.message}` };
+    }
+    // END_DB_DELETE_BLOCK
+
+    revalidatePath('/dashboard/products');
+    return { message: 'Продукт успешно удален.' };
+}
+// END_SERVER_ACTION_deleteProduct
+
+// START_SERVER_ACTION_updateProduct
+// CONTRACT:
+// PURPOSE: [Обрабатывает отправку формы для обновления существующего продукта.]
+// INPUTS:
+//   - productId: string - ID продукта для обновления.
+//   - previousState: FormState - Предыдущее состояние формы.
+//   - formData: FormData - Данные, отправленные из формы.
+// OUTPUTS:
+//   - FormState - Новое состояние формы с сообщением об успехе или ошибке.
+// SIDE_EFFECTS:
+//   - Обновляет запись в таблице 'products' в Supabase.
+//   - Вызывает revalidatePath для обновления UI.
+export async function updateProduct(productId: string, previousState: FormState, formData: FormData): Promise<FormState> {
+    // START_VALIDATION_BLOCK: [Валидация входящих данных формы с помощью Zod.]
+    if (!productId) {
+        return { message: 'Ошибка: ID продукта не предоставлен.' };
+    }
+
+    const validatedFields = addProductSchema.safeParse({
+        name: formData.get('name'),
+        calories: formData.get('calories'),
+        protein: formData.get('protein'),
+        fat: formData.get('fat'),
+        carbs: formData.get('carbs'),
+        fiber: formData.get('fiber'),
+        sugar: formData.get('sugar'),
+        alcohol: formData.get('alcohol'),
+        caffeine: formData.get('caffeine'),
+    });
+
+    if (!validatedFields.success) {
+        return {
+            message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
+            errors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+    // END_VALIDATION_BLOCK
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return { message: 'Ошибка: Пользователь не авторизован.' };
+    }
+
+    // START_DB_UPDATE_BLOCK: [Обновление данных продукта в базе данных.]
+    const { error } = await supabase
+        .from('products')
+        .update({
+            name: validatedFields.data.name,
+            calories_per_100g: validatedFields.data.calories,
+            protein_per_100g: validatedFields.data.protein,
+            fat_per_100g: validatedFields.data.fat,
+            carbs_per_100g: validatedFields.data.carbs,
+            fiber_per_100g: validatedFields.data.fiber || 0,
+            sugar_per_100g: validatedFields.data.sugar || 0,
+            alcohol_per_100g: validatedFields.data.alcohol || 0,
+            caffeine_per_100g_mg: validatedFields.data.caffeine || 0,
+        })
+        .match({ id: productId, user_id: user.id });
+
+    if (error) {
+        return { message: `Ошибка базы данных: ${error.message}` };
+    }
+    // END_DB_UPDATE_BLOCK
+
+    revalidatePath('/dashboard/products');
+    return { message: `Продукт "${validatedFields.data.name}" успешно обновлен!` };
+}
+// END_SERVER_ACTION_updateProduct

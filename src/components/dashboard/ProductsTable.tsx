@@ -5,6 +5,8 @@
 // LINKS_TO_SPECIFICATION: [Development Plan: 2.2]
 
 import { getProducts, Product } from "../../app/actions";
+import DeleteProductButton from "./DeleteProductButton";
+import EditProductButton from "./EditProductButton";
 
 // START_COMPONENT_ProductsTable
 // CONTRACT:
@@ -18,7 +20,7 @@ export default async function ProductsTable({ query }: { query: string }) {
 
     // START_EMPTY_STATE_BLOCK: [Отображение сообщения, если список продуктов пуст.]
     if (products.length === 0) {
-        return <p>Ваш справочник продуктов пуст. Добавьте первый продукт.</p>;
+        return <p>Продукты не найдены. Попробуйте другой поисковый запрос или добавьте новый продукт.</p>;
     }
     // END_EMPTY_STATE_BLOCK
 
@@ -30,9 +32,13 @@ export default async function ProductsTable({ query }: { query: string }) {
                     <tr>
                         <th scope="col" className="py-3 px-6">Название</th>
                         <th scope="col" className="py-3 px-6">Калории (на 100г)</th>
-                        <th scope="col" className="py-3 px-6">Белки (на 100г)</th>
-                        <th scope="col" className="py-3 px-6">Жиры (на 100г)</th>
-                        <th scope="col" className="py-3 px-6">Углеводы (на 100г)</th>
+                        <th scope="col" className="py-3 px-6">Белки (г)</th>
+                        <th scope="col" className="py-3 px-6">Жиры (г)</th>
+                        <th scope="col" className="py-3 px-6">Углеводы (г)</th>
+                        <th scope="col" className="py-3 px-6">Клетчатка (г)</th>
+                        <th scope="col" className="py-3 px-6">Сахар (г)</th>
+                        <th scope="col" className="py-3 px-6">Алкоголь (г)</th>
+                        <th scope="col" className="py-3 px-6">Кофеин (мг)</th>
                         <th scope="col" className="py-3 px-6">
                             <span className="sr-only">Действия</span>
                         </th>
@@ -48,8 +54,13 @@ export default async function ProductsTable({ query }: { query: string }) {
                             <td className="py-4 px-6">{product.protein_per_100g}</td>
                             <td className="py-4 px-6">{product.fat_per_100g}</td>
                             <td className="py-4 px-6">{product.carbs_per_100g}</td>
-                            <td className="py-4 px-6 text-right">
-                                {/* Action buttons will be added here */}
+                            <td className="py-4 px-6">{product.fiber_per_100g || 0}</td>
+                            <td className="py-4 px-6">{product.sugar_per_100g || 0}</td>
+                            <td className="py-4 px-6">{product.alcohol_per_100g || 0}</td>
+                            <td className="py-4 px-6">{product.caffeine_per_100g_mg || 0}</td>
+                            <td className="py-4 px-6 text-right space-x-4">
+                                <EditProductButton product={product} />
+                                <DeleteProductButton productId={product.id} />
                             </td>
                         </tr>
                     ))}
