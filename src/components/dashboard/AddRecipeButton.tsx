@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import Modal from '../ui/Modal';
 // This component will be created in the next step.
-// import AddRecipeForm from '../forms/AddRecipeForm';
+import AddRecipeForm from '../forms/AddRecipeForm';
 
 // START_COMPONENT_AddRecipeButton
 // CONTRACT:
@@ -34,8 +34,7 @@ export default function AddRecipeButton() {
                 onClose={() => setIsModalOpen(false)}
                 title="Добавить новый рецепт"
             >
-                {/* <AddRecipeForm onFormSuccess={() => setIsModalOpen(false)} /> */}
-                <p>[Форма добавления рецепта будет здесь]</p>
+                <AddRecipeForm onFormSuccess={() => setIsModalOpen(false)} />
             </Modal>
         </>
     );

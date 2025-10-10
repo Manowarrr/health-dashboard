@@ -8,7 +8,7 @@ import { Suspense } from 'react';
 // These components will be created in the next steps.
 import RecipesTable from '../../../components/dashboard/RecipesTable';
 // import RecipeSearch from '../../../components/dashboard/RecipeSearch';
-// import AddRecipeButton from '../../../components/dashboard/AddRecipeButton';
+import AddRecipeButton from '../../../components/dashboard/AddRecipeButton';
 
 // START_COMPONENT_RecipesPage
 // CONTRACT:
@@ -27,8 +27,7 @@ export default async function RecipesPage({ searchParams }: { searchParams?: { q
             
             <div className="flex justify-between items-center">
                 {/* <RecipeSearch /> */}
-                {/* <AddRecipeButton /> */}
-                <p>[Поиск и кнопка добавления будут здесь]</p>
+                <AddRecipeButton />
             </div>
 
             <Suspense key={query} fallback={<p>Загрузка таблицы рецептов...</p>}>

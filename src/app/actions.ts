@@ -40,6 +40,15 @@ const addFoodLogSchema = z.object({
 // END_ZOD_SCHEMA_addFoodLogSchema
 
 
+// START_ZOD_SCHEMA_addRecipeSchema
+// CONTRACT:
+// PURPOSE: [Определяет схему валидации для данных, поступающих из формы добавления рецепта.]
+const addRecipeSchema = z.object({
+    name: z.string().min(2, { message: 'Название должно быть длиннее 2 символов' }),
+});
+// END_ZOD_SCHEMA_addRecipeSchema
+
+
 // START_TYPE_DEFINITION_FormState
 // CONTRACT:
 // PURPOSE: [Определяет структуру объекта состояния для форм, использующих Server Actions.]
@@ -451,3 +460,52 @@ export async function getRecipes(query?: string): Promise<Recipe[]> {
     return data;
 }
 // END_SERVER_ACTION_getRecipes
+
+
+// START_SERVER_ACTION_addRecipe
+// CONTRACT:
+// PURPOSE: [Обрабатывает отправку формы для добавления нового рецепта в личный справочник пользователя.]
+// INPUTS:
+//   - previousState: FormState - Предыдущее состояние формы (для useFormState).
+//   - formData: FormData - Данные, отправленные из HTML-формы.
+// OUTPUTS:
+//   - FormState - Новое состояние формы с сообщением об успехе или ошибке.
+// SIDE_EFFECTS:
+//   - Вставляет новую запись в таблицу 'recipes' в Supabase.
+//   - Вызывает revalidatePath('/dashboard/recipes') для обновления UI.
+export async function addRecipe(previousState: FormState, formData: FormData): Promise<FormState> {
+    // START_VALIDATION_BLOCK: [Валидация входящих данных формы с помощью Zod.]
+    const validatedFields = addRecipeSchema.safeParse({
+        name: formData.get('name'),
+    });
+
+    if (!validatedFields.success) {
+        return {
+            message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
+            errors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+    // END_VALIDATION_BLOCK
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { message: 'Ошибка: Пользователь не авторизован.' };
+    }
+
+    // START_DB_INSERT_BLOCK: [Вставка проверенных данных в базу данных Supabase.]
+    const { error } = await supabase.from('recipes').insert({
+        user_id: user.id,
+        name: validatedFields.data.name,
+    });
+
+    if (error) {
+        return { message: `Ошибка базы данных: ${error.message}` };
+    }
+    // END_DB_INSERT_BLOCK
+
+    revalidatePath('/dashboard/recipes');
+    return { message: `Рецепт "${validatedFields.data.name}" успешно добавлен!` };
+}
+// END_SERVER_ACTION_addRecipe
