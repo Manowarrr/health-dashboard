@@ -34,7 +34,8 @@ const addProductSchema = z.object({
 const addFoodLogSchema = z.object({
     productId: z.string().uuid({ message: 'Необходимо выбрать продукт.' }),
     weight: z.coerce.number().positive({ message: 'Вес должен быть больше нуля.' }),
-    mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack'], { message: 'Необходимо выбрать тип приема пищи.'})
+    mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack'], { message: 'Необходимо выбрать тип приема пищи.'}),
+    time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: 'Неверный формат времени.' })
 });
 // END_ZOD_SCHEMA_addFoodLogSchema
 
@@ -182,6 +183,7 @@ export async function addFoodLog(previousState: FormState, formData: FormData): 
         productId: formData.get('productId'),
         weight: formData.get('weight'),
         mealType: formData.get('mealType'),
+        time: formData.get('time'),
     });
 
     if (!validatedFields.success) {
@@ -200,12 +202,18 @@ export async function addFoodLog(previousState: FormState, formData: FormData): 
         return { message: `Ошибка синхронизации профиля: ${upsertError.message}` };
     }
 
+    // START_TIMESTAMP_CONSTRUCTION_BLOCK: [Создание полного timestamp из текущей даты и времени из формы.]
+    const [hours, minutes] = validatedFields.data.time.split(':').map(Number);
+    const loggedAt = new Date();
+    loggedAt.setHours(hours, minutes, 0, 0);
+    // END_TIMESTAMP_CONSTRUCTION_BLOCK
+
     const { error } = await supabase.from('food_log').insert({
         user_id: user.id,
         product_id: validatedFields.data.productId,
         weight_g: validatedFields.data.weight,
         meal_type: validatedFields.data.mealType,
-        logged_at: new Date().toISOString(),
+        logged_at: loggedAt.toISOString(),
     });
 
     if (error) {
@@ -398,3 +406,48 @@ export async function updateProduct(productId: string, previousState: FormState,
     return { message: `Продукт "${validatedFields.data.name}" успешно обновлен!` };
 }
 // END_SERVER_ACTION_updateProduct
+
+
+// START_TYPE_DEFINITION_Recipe
+// CONTRACT:
+// PURPOSE: [Определяет структуру объекта рецепта для использования в UI.]
+export type Recipe = {
+    id: string;
+    name: string;
+    created_at: string;
+};
+// END_TYPE_DEFINITION_Recipe
+
+// START_SERVER_ACTION_getRecipes
+// CONTRACT:
+// PURPOSE: [Извлекает список всех рецептов, созданных текущим пользователем, с возможностью фильтрации по названию.]
+// INPUTS:
+//   - query: string (optional) - Строка для поиска по названию рецепта.
+// OUTPUTS:
+//   - Promise<Recipe[]> - Массив объектов рецептов.
+export async function getRecipes(query?: string): Promise<Recipe[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    let queryBuilder = supabase
+        .from('recipes')
+        .select('id, name, created_at')
+        .eq('user_id', user.id);
+
+    // START_QUERY_FILTERING_BLOCK: [Если есть поисковый запрос, добавляем фильтр ilike.]
+    if (query) {
+        queryBuilder = queryBuilder.ilike('name', `%${query}%`);
+    }
+    // END_QUERY_FILTERING_BLOCK
+
+    const { data, error } = await queryBuilder.order('name', { ascending: true });
+
+    if (error) {
+        console.error('Database Error:', error.message);
+        throw new Error('Не удалось загрузить рецепты.');
+    }
+    
+    return data;
+}
+// END_SERVER_ACTION_getRecipes

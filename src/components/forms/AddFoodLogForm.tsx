@@ -45,6 +45,15 @@ export default function AddFoodLogForm({ onBack }: { onBack: () => void }) {
     const [state, dispatch] = useFormState(addFoodLog, initialState);
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const getCurrentTime = () => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
+    const [time, setTime] = useState(getCurrentTime());
     // END_STATE_MANAGEMENT
 
     // START_DATA_FETCHING_EFFECT: [Загрузка списка продуктов при монтировании компонента.]
@@ -106,6 +115,22 @@ export default function AddFoodLogForm({ onBack }: { onBack: () => void }) {
                 {state.errors?.mealType && <p className="text-red-500 text-xs mt-1">{state.errors.mealType[0]}</p>}
             </div>
             {/* END_FORM_FIELD_MEAL_TYPE */}
+
+            {/* START_FORM_FIELD_TIME: [Поле для ввода времени приема пищи.] */}
+            <div>
+                <label htmlFor="time" className="block text-sm font-medium text-gray-300">Время</label>
+                <input
+                    type="time"
+                    id="time"
+                    name="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    required
+                    className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                {state.errors?.time && <p className="text-red-500 text-xs mt-1">{state.errors.time[0]}</p>}
+            </div>
+            {/* END_FORM_FIELD_TIME */}
             
             <SubmitButton />
 
