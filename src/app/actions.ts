@@ -53,6 +53,21 @@ const addRecipeSchema = z.object({
 // END_ZOD_SCHEMA_addRecipeSchema
 
 
+// START_ZOD_SCHEMA_addMealSchema
+// CONTRACT:
+// PURPOSE: [Определяет схему валидации для данных, поступающих из формы конструктора приема пищи.]
+const addMealSchema = z.object({
+    mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']),
+    loggedAt: z.string(), // Assuming datetime-local input
+    items: z.array(z.object({
+        id: z.string().uuid(),
+        type: z.enum(['product', 'recipe']),
+        weight: z.coerce.number().positive().optional(),
+    })).min(1, { message: 'Нужно добавить хотя бы один элемент в прием пищи.' }),
+});
+// END_ZOD_SCHEMA_addMealSchema
+
+
 // START_TYPE_DEFINITION_FormState
 // CONTRACT:
 // PURPOSE: [Определяет структуру объекта состояния для форм, использующих Server Actions.]
@@ -259,22 +274,24 @@ export type NutritionSummary = {
 //   - Promise<NutritionSummary> - Объект с итоговыми данными по питанию.
 export async function getDailyNutritionSummary(): Promise<NutritionSummary> {
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { total_calories: 0, total_protein: 0, total_fat: 0, total_carbs: 0 };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    const { data, error } = await supabase
-        .from('food_log')
+
+    const { data: meals, error } = await supabase
+        .from('meals')
         .select(`
-            weight_g,
-            products (
-                calories_per_100g,
-                protein_per_100g,
-                fat_per_100g,
-                carbs_per_100g
+            food_log(
+                weight_g,
+                products(*),
+                recipes(recipe_products(weight_grams, products(*)))
             )
         `)
+        .eq('user_id', user.id)
         .gte('logged_at', today.toISOString())
         .lt('logged_at', tomorrow.toISOString());
 
@@ -290,19 +307,27 @@ export async function getDailyNutritionSummary(): Promise<NutritionSummary> {
         total_carbs: 0,
     };
 
-    if (data) {
-        for (const log of data) {
-            if (log.products) {
-                // The type from Supabase for a joined table can be inferred incorrectly as an array.
-                // We force the type cast via 'unknown' as suggested by the TypeScript error.
-                // This is safe because the DB schema ensures a one-to-one relationship here.
-                const product = log.products as unknown as { calories_per_100g: number; protein_per_100g: number; fat_per_100g: number; carbs_per_100g: number; };
-                const ratio = log.weight_g / 100;
-                
-                summary.total_calories += product.calories_per_100g * ratio;
-                summary.total_protein += product.protein_per_100g * ratio;
-                summary.total_fat += product.fat_per_100g * ratio;
-                summary.total_carbs += product.carbs_per_100g * ratio;
+    if (meals) {
+        for (const meal of meals) {
+            for (const log of meal.food_log) {
+                if (log.products) {
+                    const product = log.products as unknown as Product;
+                    const ratio = (log.weight_g || 0) / 100;
+                    summary.total_calories += product.calories_per_100g * ratio;
+                    summary.total_protein += product.protein_per_100g * ratio;
+                    summary.total_fat += product.fat_per_100g * ratio;
+                    summary.total_carbs += product.carbs_per_100g * ratio;
+                } else if (log.recipes) {
+                    const recipe = log.recipes as any;
+                    for (const item of recipe.recipe_products) {
+                        const product = item.products as unknown as Product;
+                        const ratio = item.weight_grams / 100;
+                        summary.total_calories += product.calories_per_100g * ratio;
+                        summary.total_protein += product.protein_per_100g * ratio;
+                        summary.total_fat += product.fat_per_100g * ratio;
+                        summary.total_carbs += product.carbs_per_100g * ratio;
+                    }
+                }
             }
         }
     }
@@ -801,3 +826,348 @@ export async function getRecipeIngredients(recipeId: string): Promise<RecipeIngr
     return data;
 }
 // END_SERVER_ACTION_getRecipeIngredients
+
+
+// START_TYPE_DEFINITION_FoodSearchResult
+// CONTRACT:
+// PURPOSE: [Определяет структуру объекта для результатов поиска продуктов и рецептов.]
+export type FoodSearchResult = {
+    id: string;
+    name: string;
+    type: 'product' | 'recipe';
+};
+// END_TYPE_DEFINITION_FoodSearchResult
+
+
+// START_SERVER_ACTION_searchFoodItems
+// CONTRACT:
+// PURPOSE: [Выполняет поиск по продуктам и рецептам пользователя по заданной строке.]
+// INPUTS:
+//   - query: string - Поисковый запрос.
+// OUTPUTS:
+//   - Promise<FoodSearchResult[]> - Массив объектов, содержащих продукты и рецепты.
+export async function searchFoodItems(query: string): Promise<FoodSearchResult[]> {
+    if (!query) return [];
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // START_PRODUCT_SEARCH_BLOCK: [Поиск по таблице продуктов.]
+    const { data: products, error: productError } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .ilike('name', `%${query}%`)
+        .limit(5);
+
+    if (productError) {
+        console.error('Product search error:', productError.message);
+        throw new Error('Не удалось выполнить поиск по продуктам.');
+    }
+    // END_PRODUCT_SEARCH_BLOCK
+
+    // START_RECIPE_SEARCH_BLOCK: [Поиск по таблице рецептов.]
+    const { data: recipes, error: recipeError } = await supabase
+        .from('recipes')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .ilike('name', `%${query}%`)
+        .limit(5);
+
+    if (recipeError) {
+        console.error('Recipe search error:', recipeError.message);
+        throw new Error('Не удалось выполнить поиск по рецептам.');
+    }
+    // END_RECIPE_SEARCH_BLOCK
+
+    // START_COMBINE_RESULTS_BLOCK: [Объединение и форматирование результатов поиска.]
+    const productResults: FoodSearchResult[] = products.map(p => ({ ...p, type: 'product' }));
+    const recipeResults: FoodSearchResult[] = recipes.map(r => ({ ...r, type: 'recipe' }));
+
+    const combinedResults = [...productResults, ...recipeResults].sort((a, b) => a.name.localeCompare(b.name));
+    // END_COMBINE_RESULTS_BLOCK
+
+    return combinedResults;
+}
+// END_SERVER_ACTION_searchFoodItems
+
+
+// START_SERVER_ACTION_addMeal
+// CONTRACT:
+// PURPOSE: [Обрабатывает создание нового приема пищи и всех связанных с ним записей в журнале еды.]
+// INPUTS:
+//   - previousState: FormState - Предыдущее состояние формы.
+//   - formData: FormData - Данные, отправленные из формы.
+// OUTPUTS:
+//   - FormState - Новое состояние формы с сообщением об успехе или ошибке.
+// SIDE_EFFECTS:
+//   - Создает одну запись в таблице 'meals'.
+//   - Создает одну или несколько записей в таблице 'food_log'.
+//   - Вызывает revalidatePath для обновления UI.
+export async function addMeal(previousState: FormState, formData: FormData): Promise<FormState> {
+    
+    // START_DATA_TRANSFORMATION_BLOCK: [Преобразование данных формы в структурированный объект.]
+    const rawData = {
+        mealType: formData.get('mealType'),
+        loggedAt: formData.get('loggedAt'),
+        items: JSON.parse(formData.get('items') as string || '[]'),
+    };
+    // END_DATA_TRANSFORMATION_BLOCK
+
+    // START_VALIDATION_BLOCK: [Валидация входящих данных формы с помощью Zod.]
+    const validatedFields = addMealSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+        console.error('Validation Errors:', validatedFields.error.flatten().fieldErrors);
+        return {
+            message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
+            errors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+    // END_VALIDATION_BLOCK
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { message: 'Ошибка: Пользователь не авторизован.' };
+    }
+
+    // START_TRANSACTION_BLOCK: [Вставка приема пищи и всех его составляющих.]
+    // 1. Create the meal entry
+    const { data: mealData, error: mealError } = await supabase
+        .from('meals')
+        .insert({
+            user_id: user.id,
+            meal_type: validatedFields.data.mealType,
+            logged_at: validatedFields.data.loggedAt,
+        })
+        .select('id')
+        .single();
+
+    if (mealError) {
+        return { message: `Ошибка базы данных при создании приема пищи: ${mealError.message}` };
+    }
+
+    const mealId = mealData.id;
+
+    // 2. Prepare food_log entries
+    const foodLogEntries = validatedFields.data.items.map(item => ({
+        user_id: user.id,
+        meal_id: mealId,
+        product_id: item.type === 'product' ? item.id : null,
+        recipe_id: item.type === 'recipe' ? item.id : null,
+        weight_g: item.weight, // Will be null for recipes, which is correct
+    }));
+
+    // 3. Insert all food_log entries
+    const { error: foodLogError } = await supabase
+        .from('food_log')
+        .insert(foodLogEntries);
+
+    if (foodLogError) {
+        // Attempt to roll back the meal creation if food_log entries fail
+        await supabase.from('meals').delete().match({ id: mealId });
+        return { message: `Ошибка базы данных при записи еды: ${foodLogError.message}` };
+    }
+    // END_TRANSACTION_BLOCK
+
+    revalidatePath('/dashboard'); // Revalidate the main dashboard to update summary widgets
+    revalidatePath('/dashboard/nutrition'); // Revalidate the nutrition page
+    return { message: 'Прием пищи успешно добавлен!' };
+}
+// END_SERVER_ACTION_addMeal
+
+
+// START_TYPE_DEFINITION_Meal
+// CONTRACT:
+// PURPOSE: [Определяет полную структуру приема пищи, включая вложенные продукты и рецепты.]
+export type Meal = {
+    id: string;
+    meal_type: string;
+    logged_at: string;
+    food_log: {
+        id: string;
+        weight_g: number | null;
+        products: {
+            id: string;
+            name: string;
+        } | null;
+        recipes: {
+            id: string;
+            name: string;
+        } | null;
+    }[];
+};
+// END_TYPE_DEFINITION_Meal
+
+
+// START_SERVER_ACTION_getMealsForDate
+// CONTRACT:
+// PURPOSE: [Извлекает все приемы пищи и их содержимое за указанную дату.]
+// INPUTS:
+//   - date: Date - Дата, за которую нужно получить данные.
+// OUTPUTS:
+//   - Promise<Meal[]> - Массив объектов приемов пищи.
+export async function getMealsForDate(date: Date): Promise<Meal[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // START_DATE_RANGE_SETUP: [Определение начальной и конечной временных меток для запроса.]
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1);
+    // END_DATE_RANGE_SETUP
+
+    // START_DB_FETCH_BLOCK: [Выборка данных о приемах пищи с вложенными записями из журнала еды.]
+    const { data, error } = await supabase
+        .from('meals')
+        .select(`
+            id,
+            meal_type,
+            logged_at,
+            food_log (
+                id,
+                weight_g,
+                products (id, name),
+                recipes (id, name)
+            )
+        `)
+        .eq('user_id', user.id)
+        .gte('logged_at', startDate.toISOString())
+        .lt('logged_at', endDate.toISOString())
+        .order('logged_at', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching meals:', error.message);
+        throw new Error('Не удалось загрузить приемы пищи.');
+    }
+    // END_DB_FETCH_BLOCK
+
+    return data as any as Meal[];
+}
+// END_SERVER_ACTION_getMealsForDate
+
+
+// START_SERVER_ACTION_deleteMeal
+// CONTRACT:
+// PURPOSE: [Удаляет прием пищи и все связанные с ним записи в журнале еды.]
+// INPUTS:
+//   - mealId: string - ID приема пищи для удаления.
+// SIDE_EFFECTS:
+//   - Удаляет запись из таблицы 'meals'. Связанные записи в 'food_log' удаляются каскадно.
+//   - Вызывает revalidatePath для обновления UI.
+export async function deleteMeal(mealId: string) {
+    if (!mealId) {
+        return { message: 'Ошибка: ID приема пищи не предоставлен.' };
+    }
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { message: 'Ошибка: Пользователь не авторизован.' };
+    }
+
+    const { error } = await supabase
+        .from('meals')
+        .delete()
+        .match({ id: mealId, user_id: user.id });
+
+    if (error) {
+        return { message: `Ошибка базы данных: ${error.message}` };
+    }
+
+    revalidatePath('/dashboard/nutrition');
+    revalidatePath('/dashboard');
+    return { message: 'Прием пищи успешно удален.' };
+}
+// END_SERVER_ACTION_deleteMeal
+
+
+// START_TYPE_DEFINITION_NutritionDataPoint
+// CONTRACT:
+// PURPOSE: [Определяет структуру точки данных для графика истории питания.]
+export type NutritionDataPoint = {
+    date: string;
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+};
+// END_TYPE_DEFINITION_NutritionDataPoint
+
+
+// START_SERVER_ACTION_getNutritionHistory
+// CONTRACT:
+// PURPOSE: [Агрегирует данные по КБЖУ за заданный период времени, группируя по дням.]
+// INPUTS:
+//   - from: Date - Начальная дата периода.
+//   - to: Date - Конечная дата периода.
+// OUTPUTS:
+//   - Promise<NutritionDataPoint[]> - Массив точек данных для графика.
+export async function getNutritionHistory(from: Date, to: Date): Promise<NutritionDataPoint[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // START_DB_FETCH_BLOCK: [Выборка всех записей журнала еды за заданный период.]
+    const { data, error } = await supabase
+        .from('food_log')
+        .select(`
+            weight_g,
+            logged_at,
+            products (calories_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g),
+            recipes (recipe_products(weight_grams, products(calories_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g)))
+        `)
+        .eq('user_id', user.id)
+        .gte('logged_at', from.toISOString())
+        .lt('logged_at', to.toISOString());
+
+    if (error) {
+        console.error('Error fetching nutrition history:', error.message);
+        throw new Error('Не удалось загрузить историю питания.');
+    }
+    // END_DB_FETCH_BLOCK
+
+    // START_DATA_AGGREGATION_BLOCK: [Агрегация данных по дням.]
+    const dailyTotals: { [key: string]: Omit<NutritionDataPoint, 'date'> } = {};
+
+    for (const log of data) {
+        const date = new Date(log.logged_at).toISOString().split('T')[0];
+        if (!dailyTotals[date]) {
+            dailyTotals[date] = { calories: 0, protein: 0, fat: 0, carbs: 0 };
+        }
+
+        if (log.products) {
+            const product = log.products as unknown as Product;
+            const ratio = (log.weight_g || 0) / 100;
+            dailyTotals[date].calories += product.calories_per_100g * ratio;
+            dailyTotals[date].protein += product.protein_per_100g * ratio;
+            dailyTotals[date].fat += product.fat_per_100g * ratio;
+            dailyTotals[date].carbs += product.carbs_per_100g * ratio;
+        } else if (log.recipes) {
+            const recipe = log.recipes as any;
+            for (const item of recipe.recipe_products) {
+                const product = item.products as unknown as Product;
+                const ratio = item.weight_grams / 100;
+                dailyTotals[date].calories += product.calories_per_100g * ratio;
+                dailyTotals[date].protein += product.protein_per_100g * ratio;
+                dailyTotals[date].fat += product.fat_per_100g * ratio;
+                dailyTotals[date].carbs += product.carbs_per_100g * ratio;
+            }
+        }
+    }
+
+    const result: NutritionDataPoint[] = Object.entries(dailyTotals).map(([date, totals]) => ({
+        date,
+        ...totals,
+    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // END_DATA_AGGREGATION_BLOCK
+
+    return result;
+}
+// END_SERVER_ACTION_getNutritionHistory

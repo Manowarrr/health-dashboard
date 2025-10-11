@@ -10,12 +10,12 @@
 
 import { useState } from "react";
 import AddProductForm from "./forms/AddProductForm";
-import AddFoodLogForm from "./forms/AddFoodLogForm";
+import AddMealForm from './forms/AddMealForm';
 
 // START_TYPE_DEFINITION_DataType
 // CONTRACT:
 // PURPOSE: [Определяет возможные типы данных, которые пользователь может добавить.]
-type DataType = 'food' | 'workout' | 'sleep' | 'product' | null;
+type DataType = 'meal' | 'workout' | 'sleep' | 'product' | null;
 // END_TYPE_DEFINITION_DataType
 
 
@@ -34,8 +34,8 @@ export default function AddDataForm({ initialType = null }: { initialType?: Data
         return <AddProductForm onBack={() => setSelectedType(null)} />;
     }
 
-    if (selectedType === 'food') {
-        return <AddFoodLogForm onBack={() => setSelectedType(null)} />;
+    if (selectedType === 'meal') {
+        return <AddMealForm />;
     }
 
     if (selectedType) {
@@ -56,7 +56,7 @@ export default function AddDataForm({ initialType = null }: { initialType?: Data
         <div className="space-y-4">
             <h4 className="text-lg font-medium text-center text-gray-300 mb-6">Что вы хотите добавить?</h4>
             <button
-                onClick={() => setSelectedType('food')}
+                onClick={() => setSelectedType('meal')}
                 className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200"
             >
                 Прием пищи
