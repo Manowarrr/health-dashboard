@@ -33,12 +33,6 @@ type MealItem = {
     weight?: number;
 };
 
-type AddMealFormState = {
-    message: string | null;
-    errors?: Record<string, string[] | undefined>;
-    status?: 'success' | 'error';
-};
-
 export default function AddMealForm() {
     // #START_COMPONENT_STATE_SETUP: [Инициализация состояний формы.]
     const [items, setItems] = useState<MealItem[]>([]);
@@ -50,8 +44,8 @@ export default function AddMealForm() {
     // #END_COMPONENT_STATE_SETUP
 
     // #START_FORM_SUBMISSION_SETUP: [Настройка обработки отправки формы с помощью useFormState.]
-    const initialState: AddMealFormState = { message: null, errors: {} };
-    const [state, dispatch] = useFormState(addMeal as (prevState: AddMealFormState, formData: FormData) => Promise<AddMealFormState>, initialState);
+    const initialState: FormState = { message: null, errors: {} };
+    const [state, dispatch] = useFormState(addMeal, initialState);
     // #END_FORM_SUBMISSION_SETUP
 
     // #START_DATA_FETCHING: [Получение данных для формы, например, списка продуктов и рецептов.]
@@ -221,7 +215,7 @@ export default function AddMealForm() {
             </div>
              {state.message && (
                 <div aria-live="polite" className={`mt-2 text-sm ${state.status === 'success' ? 'text-green-500' : 'text-red-500'}`}>
-                    {state.message && <p>{state.message}</p>}
+                    <p>{state.message}</p>
                 </div>
             )}
         </form>

@@ -37,7 +37,7 @@ function SubmitButton() {
 //   - onBack: () => void - Функция для возврата к предыдущему экрану.
 export default function AddProductForm({ onBack }: { onBack: () => void }) {
     // START_STATE_MANAGEMENT: [Инициализация состояния формы с помощью useFormState.]
-    const initialState: FormState = { message: '', errors: {} };
+    const initialState: FormState = { message: null, errors: {} };
     const [state, dispatch] = useFormState(addProduct, initialState);
     // END_STATE_MANAGEMENT
 
@@ -194,7 +194,7 @@ export default function AddProductForm({ onBack }: { onBack: () => void }) {
             {/* END_FORM_BLOCK */}
             
             {/* START_STATUS_MESSAGE_BLOCK: [Отображение сообщения о результате операции.] */}
-            {state.message && <p className={`text-sm mt-2 ${state.errors ? 'text-red-500' : 'text-green-500'}`}>{state.message}</p>}
+            {state.message && <p className={`text-sm mt-2 ${state.status === 'success' ? 'text-green-500' : 'text-red-500'}`}>{state.message}</p>}
             {/* END_STATUS_MESSAGE_BLOCK */}
         </div>
     );

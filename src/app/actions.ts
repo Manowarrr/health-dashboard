@@ -72,8 +72,9 @@ const addMealSchema = z.object({
 // CONTRACT:
 // PURPOSE: [Определяет структуру объекта состояния для форм, использующих Server Actions.]
 export type FormState = {
-    message: string;
+    message: string | null;
     errors?: Record<string, string[] | undefined>;
+    status?: 'success' | 'error';
 };
 // END_TYPE_DEFINITION_FormState
 
@@ -107,6 +108,7 @@ export async function addProduct(previousState: FormState, formData: FormData): 
         return {
             message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
             errors: validatedFields.error.flatten().fieldErrors,
+            status: 'error',
         };
     }
     // END_VALIDATION_BLOCK
@@ -115,14 +117,14 @@ export async function addProduct(previousState: FormState, formData: FormData): 
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     // START_ENSURE_USER_PROFILE_EXISTS: [Проверка и создание профиля пользователя в public.users, если он отсутствует.]
     const { error: upsertError } = await supabase.from('users').upsert({ id: user.id });
     if (upsertError) {
         console.error('User Profile Upsert Error:', upsertError);
-        return { message: `Ошибка синхронизации профиля: ${upsertError.message}` };
+        return { message: `Ошибка синхронизации профиля: ${upsertError.message}`, status: 'error' };
     }
     // END_ENSURE_USER_PROFILE_EXISTS
 
@@ -141,12 +143,12 @@ export async function addProduct(previousState: FormState, formData: FormData): 
     });
 
     if (error) {
-        return { message: `Ошибка базы данных: ${error.message}` };
+        return { message: `Ошибка базы данных: ${error.message}`, status: 'error' };
     }
     // END_DB_INSERT_BLOCK
 
     revalidatePath('/dashboard');
-    return { message: `Продукт "${validatedFields.data.name}" успешно добавлен!` };
+    return { message: `Продукт "${validatedFields.data.name}" успешно добавлен!`, status: 'success' };
 }
 // END_SERVER_ACTION_addProduct
 
@@ -218,16 +220,17 @@ export async function addFoodLog(previousState: FormState, formData: FormData): 
         return {
             message: 'Ошибка валидации.',
             errors: validatedFields.error.flatten().fieldErrors,
+            status: 'error',
         };
     }
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { message: 'Ошибка: Пользователь не авторизован.' };
+    if (!user) return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
 
     const { error: upsertError } = await supabase.from('users').upsert({ id: user.id });
     if (upsertError) {
-        return { message: `Ошибка синхронизации профиля: ${upsertError.message}` };
+        return { message: `Ошибка синхронизации профиля: ${upsertError.message}`, status: 'error' };
     }
 
     // START_TIMESTAMP_CONSTRUCTION_BLOCK: [Создание полного timestamp из текущей даты и времени из формы.]
@@ -245,11 +248,11 @@ export async function addFoodLog(previousState: FormState, formData: FormData): 
     });
 
     if (error) {
-        return { message: `Ошибка базы данных: ${error.message}` };
+        return { message: `Ошибка базы данных: ${error.message}`, status: 'error' };
     }
 
     revalidatePath('/dashboard');
-    return { message: `Прием пищи успешно записан!` };
+    return { message: `Прием пищи успешно записан!`, status: 'success' };
 }
 // END_SERVER_ACTION_addFoodLog
 
@@ -348,7 +351,7 @@ export async function getDailyNutritionSummary(): Promise<NutritionSummary> {
 export async function deleteProduct(productId: string) {
     // START_VALIDATION_BLOCK: [Проверка наличия ID продукта.]
     if (!productId) {
-        return { message: 'Ошибка: ID продукта не предоставлен.' };
+        return { message: 'Ошибка: ID продукта не предоставлен.', status: 'error' };
     }
     // END_VALIDATION_BLOCK
 
@@ -356,7 +359,7 @@ export async function deleteProduct(productId: string) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     // START_DB_DELETE_BLOCK: [Удаление продукта из базы данных.]
@@ -366,12 +369,12 @@ export async function deleteProduct(productId: string) {
         .match({ id: productId, user_id: user.id });
 
     if (error) {
-        return { message: `Ошибка базы данных: ${error.message}` };
+        return { message: `Ошибка базы данных: ${error.message}`, status: 'error' };
     }
     // END_DB_DELETE_BLOCK
 
     revalidatePath('/dashboard/products');
-    return { message: 'Продукт успешно удален.' };
+    return { message: 'Продукт успешно удален.', status: 'success' };
 }
 // END_SERVER_ACTION_deleteProduct
 
@@ -390,7 +393,7 @@ export async function deleteProduct(productId: string) {
 export async function updateProduct(productId: string, previousState: FormState, formData: FormData): Promise<FormState> {
     // START_VALIDATION_BLOCK: [Валидация входящих данных формы с помощью Zod.]
     if (!productId) {
-        return { message: 'Ошибка: ID продукта не предоставлен.' };
+        return { message: 'Ошибка: ID продукта не предоставлен.', status: 'error' };
     }
 
     const validatedFields = addProductSchema.safeParse({
@@ -409,6 +412,7 @@ export async function updateProduct(productId: string, previousState: FormState,
         return {
             message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
             errors: validatedFields.error.flatten().fieldErrors,
+            status: 'error',
         };
     }
     // END_VALIDATION_BLOCK
@@ -416,7 +420,7 @@ export async function updateProduct(productId: string, previousState: FormState,
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     // START_DB_UPDATE_BLOCK: [Обновление данных продукта в базе данных.]
@@ -436,12 +440,12 @@ export async function updateProduct(productId: string, previousState: FormState,
         .match({ id: productId, user_id: user.id });
 
     if (error) {
-        return { message: `Ошибка базы данных: ${error.message}` };
+        return { message: `Ошибка базы данных: ${error.message}`, status: 'error' };
     }
     // END_DB_UPDATE_BLOCK
 
     revalidatePath('/dashboard/products');
-    return { message: `Продукт "${validatedFields.data.name}" успешно обновлен!` };
+    return { message: `Продукт "${validatedFields.data.name}" успешно обновлен!`, status: 'success' };
 }
 // END_SERVER_ACTION_updateProduct
 
@@ -594,6 +598,7 @@ export async function addRecipe(previousState: FormState, formData: FormData): P
         return {
             message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
             errors: validatedFields.error.flatten().fieldErrors,
+            status: 'error',
         };
     }
     // END_VALIDATION_BLOCK
@@ -602,7 +607,7 @@ export async function addRecipe(previousState: FormState, formData: FormData): P
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     // START_TRANSACTION_BLOCK: [Вставка рецепта и его ингредиентов в рамках одной транзакции.]
@@ -617,7 +622,7 @@ export async function addRecipe(previousState: FormState, formData: FormData): P
         .single();
 
     if (recipeError) {
-        return { message: `Ошибка базы данных при создании рецепта: ${recipeError.message}` };
+        return { message: `Ошибка базы данных при создании рецепта: ${recipeError.message}`, status: 'error' };
     }
 
     const recipeId = recipeData.id;
@@ -638,13 +643,13 @@ export async function addRecipe(previousState: FormState, formData: FormData): P
         if (ingredientsError) {
             // Attempt to roll back the recipe creation if ingredients fail
             await supabase.from('recipes').delete().match({ id: recipeId });
-            return { message: `Ошибка базы данных при добавлении ингредиентов: ${ingredientsError.message}` };
+            return { message: `Ошибка базы данных при добавлении ингредиентов: ${ingredientsError.message}`, status: 'error' };
         }
     }
     // END_TRANSACTION_BLOCK
 
     revalidatePath('/dashboard/recipes');
-    return { message: `Рецепт "${validatedFields.data.name}" успешно добавлен!` };
+    return { message: `Рецепт "${validatedFields.data.name}" успешно добавлен!`, status: 'success' };
 }
 // END_SERVER_ACTION_addRecipe
 
@@ -660,7 +665,7 @@ export async function addRecipe(previousState: FormState, formData: FormData): P
 export async function deleteRecipe(recipeId: string) {
     // START_VALIDATION_BLOCK: [Проверка наличия ID рецепта.]
     if (!recipeId) {
-        return { message: 'Ошибка: ID рецепта не предоставлен.' };
+        return { message: 'Ошибка: ID рецепта не предоставлен.', status: 'error' };
     }
     // END_VALIDATION_BLOCK
 
@@ -668,7 +673,7 @@ export async function deleteRecipe(recipeId: string) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     // START_DB_DELETE_BLOCK: [Удаление рецепта из базы данных. Ингредиенты удаляются каскадно.]
@@ -678,12 +683,12 @@ export async function deleteRecipe(recipeId: string) {
         .match({ id: recipeId, user_id: user.id });
 
     if (error) {
-        return { message: `Ошибка базы данных: ${error.message}` };
+        return { message: `Ошибка базы данных: ${error.message}`, status: 'error' };
     }
     // END_DB_DELETE_BLOCK
 
     revalidatePath('/dashboard/recipes');
-    return { message: 'Рецепт успешно удален.' };
+    return { message: 'Рецепт успешно удален.', status: 'success' };
 }
 // END_SERVER_ACTION_deleteRecipe
 
@@ -700,7 +705,7 @@ export async function deleteRecipe(recipeId: string) {
 //   - Вызывает revalidatePath для обновления UI.
 export async function updateRecipe(recipeId: string, previousState: FormState, formData: FormData): Promise<FormState> {
     if (!recipeId) {
-        return { message: 'Ошибка: ID рецепта не предоставлен.' };
+        return { message: 'Ошибка: ID рецепта не предоставлен.', status: 'error' };
     }
 
     // START_DATA_TRANSFORMATION_BLOCK: [Преобразование данных формы в структурированный объект.]
@@ -729,6 +734,7 @@ export async function updateRecipe(recipeId: string, previousState: FormState, f
         return {
             message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
             errors: validatedFields.error.flatten().fieldErrors,
+            status: 'error',
         };
     }
     // END_VALIDATION_BLOCK
@@ -737,7 +743,7 @@ export async function updateRecipe(recipeId: string, previousState: FormState, f
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     // START_TRANSACTION_BLOCK: [Обновление рецепта и его ингредиентов.]
@@ -748,7 +754,7 @@ export async function updateRecipe(recipeId: string, previousState: FormState, f
         .match({ id: recipeId, user_id: user.id });
 
     if (recipeError) {
-        return { message: `Ошибка базы данных при обновлении рецепта: ${recipeError.message}` };
+        return { message: `Ошибка базы данных при обновлении рецепта: ${recipeError.message}`, status: 'error' };
     }
 
     // 2. Delete old ingredients
@@ -758,7 +764,7 @@ export async function updateRecipe(recipeId: string, previousState: FormState, f
         .match({ recipe_id: recipeId, user_id: user.id });
 
     if (deleteError) {
-        return { message: `Ошибка базы данных при удалении старых ингредиентов: ${deleteError.message}` };
+        return { message: `Ошибка базы данных при удалении старых ингредиентов: ${deleteError.message}`, status: 'error' };
     }
 
     // 3. Insert new ingredients if they exist
@@ -778,14 +784,14 @@ export async function updateRecipe(recipeId: string, previousState: FormState, f
                 .insert(ingredientsToInsert);
 
             if (ingredientsError) {
-                return { message: `Ошибка базы данных при добавлении новых ингредиентов: ${ingredientsError.message}` };
+                return { message: `Ошибка базы данных при добавлении новых ингредиентов: ${ingredientsError.message}`, status: 'error' };
             }
         }
     }
     // END_TRANSACTION_BLOCK
 
     revalidatePath('/dashboard/recipes');
-    return { message: `Рецепт "${validatedFields.data.name}" успешно обновлен!` };
+    return { message: `Рецепт "${validatedFields.data.name}" успешно обновлен!`, status: 'success' };
 }
 // END_SERVER_ACTION_updateRecipe
 
@@ -923,6 +929,7 @@ export async function addMeal(previousState: FormState, formData: FormData): Pro
         return {
             message: 'Ошибка валидации. Пожалуйста, проверьте введенные данные.',
             errors: validatedFields.error.flatten().fieldErrors,
+            status: 'error',
         };
     }
     // END_VALIDATION_BLOCK
@@ -931,7 +938,7 @@ export async function addMeal(previousState: FormState, formData: FormData): Pro
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     // START_TRANSACTION_BLOCK: [Вставка приема пищи и всех его составляющих.]
@@ -947,7 +954,7 @@ export async function addMeal(previousState: FormState, formData: FormData): Pro
         .single();
 
     if (mealError) {
-        return { message: `Ошибка базы данных при создании приема пищи: ${mealError.message}` };
+        return { message: `Ошибка базы данных при создании приема пищи: ${mealError.message}`, status: 'error' };
     }
 
     const mealId = mealData.id;
@@ -969,13 +976,13 @@ export async function addMeal(previousState: FormState, formData: FormData): Pro
     if (foodLogError) {
         // Attempt to roll back the meal creation if food_log entries fail
         await supabase.from('meals').delete().match({ id: mealId });
-        return { message: `Ошибка базы данных при записи еды: ${foodLogError.message}` };
+        return { message: `Ошибка базы данных при записи еды: ${foodLogError.message}`, status: 'error' };
     }
     // END_TRANSACTION_BLOCK
 
     revalidatePath('/dashboard'); // Revalidate the main dashboard to update summary widgets
     revalidatePath('/dashboard/nutrition'); // Revalidate the nutrition page
-    return { message: 'Прием пищи успешно добавлен!' };
+    return { message: 'Прием пищи успешно добавлен!', status: 'success' };
 }
 // END_SERVER_ACTION_addMeal
 
@@ -1062,14 +1069,14 @@ export async function getMealsForDate(date: Date): Promise<Meal[]> {
 //   - Вызывает revalidatePath для обновления UI.
 export async function deleteMeal(mealId: string) {
     if (!mealId) {
-        return { message: 'Ошибка: ID приема пищи не предоставлен.' };
+        return { message: 'Ошибка: ID приема пищи не предоставлен.', status: 'error' };
     }
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { message: 'Ошибка: Пользователь не авторизован.' };
+        return { message: 'Ошибка: Пользователь не авторизован.', status: 'error' };
     }
 
     const { error } = await supabase
@@ -1078,12 +1085,12 @@ export async function deleteMeal(mealId: string) {
         .match({ id: mealId, user_id: user.id });
 
     if (error) {
-        return { message: `Ошибка базы данных: ${error.message}` };
+        return { message: `Ошибка базы данных: ${error.message}`, status: 'error' };
     }
 
     revalidatePath('/dashboard/nutrition');
     revalidatePath('/dashboard');
-    return { message: 'Прием пищи успешно удален.' };
+    return { message: 'Прием пищи успешно удален.', status: 'success' };
 }
 // END_SERVER_ACTION_deleteMeal
 

@@ -33,7 +33,7 @@ type Ingredient = {
 // INPUTS:
 //   - onFormSuccess: () => void - Callback-функция, вызываемая при успешном добавлении рецепта.
 export default function AddRecipeForm({ onFormSuccess }: { onFormSuccess: () => void; }) {
-    const initialState: FormState = { message: '', errors: {} };
+    const initialState: FormState = { message: null, errors: {} };
     const [state, dispatch] = useFormState(addRecipe, initialState);
     
     const [products, setProducts] = useState<Product[]>([]);
@@ -47,7 +47,7 @@ export default function AddRecipeForm({ onFormSuccess }: { onFormSuccess: () => 
 
     // START_EFFECT_SUCCESS_HANDLER: [При успешном ответе от сервера вызываем callback.]
     useEffect(() => {
-        if (state.message.includes('успешно добавлен')) {
+        if (state.status === 'success') {
             onFormSuccess();
         }
     }, [state, onFormSuccess]);
@@ -120,7 +120,7 @@ export default function AddRecipeForm({ onFormSuccess }: { onFormSuccess: () => 
             
             <SubmitButton />
 
-            {state.message && !state.message.includes('успешно') && (
+            {state.status === 'error' && state.message && (
                 <p className="mt-2 text-sm text-red-500">{state.message}</p>
             )}
         </form>
