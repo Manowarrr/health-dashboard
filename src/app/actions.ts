@@ -989,11 +989,15 @@ export async function addMeal(previousState: FormState, formData: FormData): Pro
 
 // START_TYPE_DEFINITION_Meal
 // CONTRACT:
-// PURPOSE: [Определяет полную структуру приема пищи, включая вложенные продукты и рецепты.]
+// PURPOSE: [Определяет полную структуру приема пищи, включая вложенные продукты, рецепты и рассчитанный КБЖУ.]
 export type Meal = {
     id: string;
     meal_type: string;
     logged_at: string;
+    total_calories: number;
+    total_protein: number;
+    total_fat: number;
+    total_carbs: number;
     food_log: {
         id: string;
         weight_g: number | null;
@@ -1012,11 +1016,11 @@ export type Meal = {
 
 // START_SERVER_ACTION_getMealsForDate
 // CONTRACT:
-// PURPOSE: [Извлекает все приемы пищи и их содержимое за указанную дату.]
+// PURPOSE: [Извлекает все приемы пищи и их содержимое за указанную дату, рассчитывая КБЖУ для каждого приема пищи.]
 // INPUTS:
 //   - date: Date - Дата, за которую нужно получить данные.
 // OUTPUTS:
-//   - Promise<Meal[]> - Массив объектов приемов пищи.
+//   - Promise<Meal[]> - Массив объектов приемов пищи с рассчитанным КБЖУ.
 export async function getMealsForDate(date: Date): Promise<Meal[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -1029,7 +1033,7 @@ export async function getMealsForDate(date: Date): Promise<Meal[]> {
     endDate.setDate(endDate.getDate() + 1);
     // END_DATE_RANGE_SETUP
 
-    // START_DB_FETCH_BLOCK: [Выборка данных о приемах пищи с вложенными записями из журнала еды.]
+    // START_DB_FETCH_BLOCK: [Выборка данных о приемах пищи с полными данными по продуктам и рецептам.]
     const { data, error } = await supabase
         .from('meals')
         .select(`
@@ -1039,8 +1043,14 @@ export async function getMealsForDate(date: Date): Promise<Meal[]> {
             food_log (
                 id,
                 weight_g,
-                products (id, name),
-                recipes (id, name)
+                products(*),
+                recipes(
+                    id, name,
+                    recipe_products(
+                        weight_grams,
+                        products(*)
+                    )
+                )
             )
         `)
         .eq('user_id', user.id)
@@ -1054,7 +1064,44 @@ export async function getMealsForDate(date: Date): Promise<Meal[]> {
     }
     // END_DB_FETCH_BLOCK
 
-    return data as any as Meal[];
+    // START_CALCULATION_BLOCK: [Расчет КБЖУ для каждого приема пищи на сервере.]
+    const mealsWithNutrition = data.map(meal => {
+        const mealSummary = {
+            total_calories: 0,
+            total_protein: 0,
+            total_fat: 0,
+            total_carbs: 0,
+        };
+
+        for (const log of meal.food_log) {
+            if (log.products) {
+                const product = log.products as unknown as Product;
+                const ratio = (log.weight_g || 0) / 100;
+                mealSummary.total_calories += (product.calories_per_100g || 0) * ratio;
+                mealSummary.total_protein += (product.protein_per_100g || 0) * ratio;
+                mealSummary.total_fat += (product.fat_per_100g || 0) * ratio;
+                mealSummary.total_carbs += (product.carbs_per_100g || 0) * ratio;
+            } else if (log.recipes) {
+                const recipe = log.recipes as any;
+                for (const item of recipe.recipe_products) {
+                    const product = item.products as unknown as Product;
+                    const ratio = (item.weight_grams || 0) / 100;
+                    mealSummary.total_calories += (product.calories_per_100g || 0) * ratio;
+                    mealSummary.total_protein += (product.protein_per_100g || 0) * ratio;
+                    mealSummary.total_fat += (product.fat_per_100g || 0) * ratio;
+                    mealSummary.total_carbs += (product.carbs_per_100g || 0) * ratio;
+                }
+            }
+        }
+        
+        return {
+            ...meal,
+            ...mealSummary,
+        };
+    });
+    // END_CALCULATION_BLOCK
+
+    return mealsWithNutrition as any as Meal[];
 }
 // END_SERVER_ACTION_getMealsForDate
 

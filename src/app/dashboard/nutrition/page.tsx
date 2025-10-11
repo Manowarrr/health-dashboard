@@ -1,11 +1,11 @@
 import { createClient } from '../../../../lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { getMealsForDate, Meal } from '../../actions';
-import { DeleteMealButton } from '../../../components/dashboard/DeleteMealButton';
+import { MealCard } from '../../../components/dashboard/MealCard';
 
 /*
 * MODULE_CONTRACT:
-* PURPOSE: [Страница для отображения журнала питания пользователя.]
+* PURPOSE: [Страница для отображения журнала питания пользователя с использованием компонента MealCard.]
 * SCOPE: [UI, Журнал питания, Отображение данных]
 * INPUT: [Нет]
 * OUTPUT: [Компонент React 'NutritionPage']
@@ -41,33 +41,15 @@ export default async function NutritionPage() {
             </div>
             {/* #END_CALENDAR_PLACEHOLDER */}
 
-            {/* #START_MEAL_LIST_BLOCK: [Отображение списка приемов пищи.] */}
-            <div className="space-y-4">
+            {/* #START_MEAL_LIST_BLOCK: [Отображение списка приемов пищи с использованием компонента MealCard.] */}
+            <div className="space-y-6">
                 {meals.length > 0 ? (
                     meals.map((meal) => (
-                        <div key={meal.id} className="p-4 bg-gray-800 rounded-lg">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h2 className="font-semibold text-lg text-white capitalize">{meal.meal_type}</h2>
-                                    <p className="text-sm text-gray-400 mb-2">
-                                        {meal.logged_at.split('T')[1]?.slice(0, 5) || ''}
-                                    </p>
-                                </div>
-                                <DeleteMealButton id={meal.id} />
-                            </div>
-                            <ul>
-                                {meal.food_log.map((log) => (
-                                    <li key={log.id} className="text-gray-300">
-                                        - {log.products?.name || log.recipes?.name}
-                                        {log.weight_g && ` (${log.weight_g} г)`}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                        <MealCard key={meal.id} meal={meal} />
                     ))
                 ) : (
-                    <div className="p-4 bg-gray-800 rounded-lg">
-                        <p className="text-center text-gray-400">За сегодняшний день еще нет записей о приемах пищи.</p>
+                    <div className="p-8 bg-gray-800 rounded-lg text-center">
+                        <p className="text-gray-400">За сегодняшний день еще нет записей о приемах пищи.</p>
                     </div>
                 )}
             </div>
