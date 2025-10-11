@@ -50,7 +50,7 @@ export default async function NutritionPage() {
                                 <div>
                                     <h2 className="font-semibold text-lg text-white capitalize">{meal.meal_type}</h2>
                                     <p className="text-sm text-gray-400 mb-2">
-                                        {new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {meal.logged_at.split('T')[1]?.slice(0, 5) || ''}
                                     </p>
                                 </div>
                                 <DeleteMealButton id={meal.id} />

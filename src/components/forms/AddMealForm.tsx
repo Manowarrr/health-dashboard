@@ -60,6 +60,21 @@ export default function AddMealForm() {
         };
         fetchItems();
     }, [debouncedSearchTerm]);
+
+    useEffect(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const defaultValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        const loggedAtInput = document.getElementById('loggedAt') as HTMLInputElement;
+        if (loggedAtInput) {
+            loggedAtInput.value = defaultValue;
+        }
+    }, []);
     // #END_DATA_FETCHING
 
     // #START_EVENT_HANDLERS: [Обработчики для добавления и удаления элементов.]
