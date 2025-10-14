@@ -2,6 +2,7 @@ import { createClient } from '../../../../lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { getMealsForDate, Meal } from '../../actions';
 import { MealCard } from '../../../components/dashboard/MealCard';
+import AddMealButton from '../../../components/dashboard/AddMealButton';
 
 /*
 * MODULE_CONTRACT:
@@ -34,7 +35,12 @@ export default async function NutritionPage() {
     return (
         <main>
             <div className="max-w-4xl mx-auto px-4">
-                <h1 className="font-semibold text-2xl text-white mb-6">Журнал питания</h1>
+                {/* #START_PAGE_HEADER_BLOCK: [Заголовок страницы и кнопка для добавления приема пищи.] */}
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="font-semibold text-2xl text-white">Журнал питания</h1>
+                    <AddMealButton />
+                </div>
+                {/* #END_PAGE_HEADER_BLOCK */}
 
                 {/* #START_CALENDAR_PLACEHOLDER: [Заглушка для календаря навигации по дням.] */}
                 <div className="mb-6 p-4 bg-gray-800 rounded-lg">
