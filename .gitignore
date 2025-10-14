@@ -12,6 +12,9 @@
 # docs
 /docs
 
+# kilocode custom rules
+/.kilocode
+
 # next.js
 /.next/
 /out/

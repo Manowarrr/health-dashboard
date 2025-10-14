@@ -33,27 +33,29 @@ export default async function NutritionPage() {
     // #START_RENDER_BLOCK: [Рендеринг основной структуры страницы.]
     return (
         <main>
-            <h1 className="font-semibold text-2xl text-white mb-6">Журнал питания</h1>
-            
-            {/* #START_CALENDAR_PLACEHOLDER: [Заглушка для календаря навигации по дням.] */}
-            <div className="mb-6 p-4 bg-gray-800 rounded-lg">
-                <p className="text-center text-gray-400">Здесь будет календарь для навигации по дням.</p>
-            </div>
-            {/* #END_CALENDAR_PLACEHOLDER */}
+            <div className="max-w-4xl mx-auto px-4">
+                <h1 className="font-semibold text-2xl text-white mb-6">Журнал питания</h1>
 
-            {/* #START_MEAL_LIST_BLOCK: [Отображение списка приемов пищи с использованием компонента MealCard.] */}
-            <div className="space-y-6">
-                {meals.length > 0 ? (
-                    meals.map((meal) => (
-                        <MealCard key={meal.id} meal={meal} />
-                    ))
-                ) : (
-                    <div className="p-8 bg-gray-800 rounded-lg text-center">
-                        <p className="text-gray-400">За сегодняшний день еще нет записей о приемах пищи.</p>
-                    </div>
-                )}
+                {/* #START_CALENDAR_PLACEHOLDER: [Заглушка для календаря навигации по дням.] */}
+                <div className="mb-6 p-4 bg-gray-800 rounded-lg">
+                    <p className="text-center text-gray-400">Здесь будет календарь для навигации по дням.</p>
+                </div>
+                {/* #END_CALENDAR_PLACEHOLDER */}
+
+                {/* #START_MEAL_LIST_BLOCK: [Отображение списка приемов пищи с использованием компонента MealCard.] */}
+                <div className="space-y-6">
+                    {meals.length > 0 ? (
+                        meals.map((meal) => (
+                            <MealCard key={meal.id} meal={meal} />
+                        ))
+                    ) : (
+                        <div className="p-8 bg-gray-800 rounded-lg text-center">
+                            <p className="text-gray-400">За сегодняшний день еще нет записей о приемах пищи.</p>
+                        </div>
+                    )}
+                </div>
+                {/* #END_MEAL_LIST_BLOCK */}
             </div>
-            {/* #END_MEAL_LIST_BLOCK */}
         </main>
     );
     // #END_RENDER_BLOCK

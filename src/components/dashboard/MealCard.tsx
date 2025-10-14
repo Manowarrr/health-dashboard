@@ -27,52 +27,53 @@ import { DeleteMealButton } from './DeleteMealButton';
 export function MealCard({ meal }: { meal: Meal }) {
     // START_RENDER_BLOCK: [Рендеринг основной структуры карточки.]
     return (
-        <div className="bg-gray-800 rounded-2xl shadow-lg transition-all hover:shadow-cyan-500/10">
-            {/* START_HEADER_BLOCK: [Заголовок карточки с названием, временем и кнопкой удаления.] */}
-            <div className="p-4 border-b border-gray-700 flex justify-between items-start">
-                <div>
+        <div className="bg-gray-800 rounded-2xl shadow-lg divide-y divide-gray-700">
+            {/* START_HEADER_BLOCK: [Объединенный заголовок с названием, временем и КБЖУ.] */}
+            <div className="p-4 flex justify-between items-start">
+                {/* Левая часть: Название и время */}
+                <div className="flex-grow">
                     <h2 className="font-bold text-xl text-white capitalize">{meal.meal_type}</h2>
                     <p className="text-sm text-gray-400">
-                        {new Date(meal.logged_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                        {meal.logged_at.substring(11, 16)}  {/* Исправлено отображение времени */}
                     </p>
                 </div>
-                <DeleteMealButton id={meal.id} />
+
+                {/* Правая часть: КБЖУ */}
+                <div className="ml-6 flex-shrink-0 grid grid-cols-4 gap-x-4 text-center">
+                    <div>
+                        <p className="text-xs text-gray-400">Калории</p>
+                        <p className="text-lg font-bold text-white">{Math.round(meal.total_calories)}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-400">Белки</p>
+                        <p className="text-lg font-bold text-white">{Math.round(meal.total_protein)}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-400">Жиры</p>
+                        <p className="text-lg font-bold text-white">{Math.round(meal.total_fat)}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-400">Углеводы</p>
+                        <p className="text-lg font-bold text-white">{Math.round(meal.total_carbs)}</p>
+                    </div>
+                </div>
             </div>
             {/* END_HEADER_BLOCK */}
 
-            {/* START_SUMMARY_BLOCK: [Секция с итоговым КБЖУ для приема пищи.] */}
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="text-center">
-                    <p className="text-xs text-gray-400">Калории</p>
-                    <p className="text-lg font-bold text-white">{Math.round(meal.total_calories)}</p>
-                </div>
-                <div className="text-center">
-                    <p className="text-xs text-gray-400">Белки</p>
-                    <p className="text-lg font-bold text-white">{Math.round(meal.total_protein)} г</p>
-                </div>
-                <div className="text-center">
-                    <p className="text-xs text-gray-400">Жиры</p>
-                    <p className="text-lg font-bold text-white">{Math.round(meal.total_fat)} г</p>
-                </div>
-                <div className="text-center">
-                    <p className="text-xs text-gray-400">Углеводы</p>
-                    <p className="text-lg font-bold text-white">{Math.round(meal.total_carbs)} г</p>
-                </div>
-            </div>
-            {/* END_SUMMARY_BLOCK */}
-            
-            {/* START_COMPOSITION_BLOCK: [Секция со списком продуктов и рецептов.] */}
+            {/* START_COMPOSITION_BLOCK: [Секция со списком продуктов, рецептов и кнопкой удаления.] */}
             {meal.food_log.length > 0 && (
-                 <div className="p-4 border-t border-gray-700">
-                    <h3 className="font-semibold text-sm text-gray-300 mb-2">Состав:</h3>
-                    <ul className="space-y-1">
+                <div className="p-4 space-y-3">
+                    <ul className="space-y-2">
                         {meal.food_log.map((log) => (
-                            <li key={log.id} className="text-gray-400 text-sm flex justify-between">
-                                <span>- {log.products?.name || log.recipes?.name}</span>
-                                {log.weight_g && <span className="text-gray-500">{log.weight_g} г</span>}
+                            <li key={log.id} className="text-gray-300 text-sm flex justify-between items-center bg-gray-900/50 p-2 rounded-md">
+                                <span>{log.products?.name || log.recipes?.name}</span>
+                                {log.weight_g && <span className="font-mono text-gray-400">{log.weight_g} г</span>}
                             </li>
                         ))}
                     </ul>
+                    <div className="flex justify-end pt-2">
+                         <DeleteMealButton id={meal.id} />
+                    </div>
                 </div>
             )}
             {/* END_COMPOSITION_BLOCK */}
