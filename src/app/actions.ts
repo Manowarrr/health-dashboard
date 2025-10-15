@@ -1021,16 +1021,19 @@ export type Meal = {
 //   - date: Date - Дата, за которую нужно получить данные.
 // OUTPUTS:
 //   - Promise<Meal[]> - Массив объектов приемов пищи с рассчитанным КБЖУ.
-export async function getMealsForDate(date: Date): Promise<Meal[]> {
+export async function getMealsForDate(dateString: string): Promise<Meal[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    // START_DATE_RANGE_SETUP: [Определение начальной и конечной временных меток для запроса.]
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0);
+    // START_DATE_RANGE_SETUP: [Определение начальной и конечной временных меток для запроса на основе UTC.]
+    // BUG_FIX_CONTEXT: Изначально использовался new Date() и setHours(), что приводило к зависимости от часового пояса сервера.
+    // Переход на dateString и setUTCHours() гарантирует, что диапазон всегда будет с 00:00:00Z до 00:00:00Z следующего дня по UTC.
+    const startDate = new Date(dateString);
+    startDate.setUTCHours(0, 0, 0, 0);
+
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 1);
+    endDate.setUTCDate(startDate.getUTCDate() + 1);
     // END_DATE_RANGE_SETUP
 
     // START_DB_FETCH_BLOCK: [Выборка данных о приемах пищи с полными данными по продуктам и рецептам.]

@@ -16,9 +16,9 @@ import AddMealButton from '../../../components/dashboard/AddMealButton';
 // KEY_USE_CASES:
 // - NutritionPage: User (Reviewing Nutrition) -> Navigates to page -> ViewsListOfMealsForSelectedDay
 
-export default async function NutritionPage() {
+export default async function NutritionPage({ searchParams }: { searchParams?: { date?: string } }) {
     
-    // #START_DATA_FETCHING: [Получение данных о приемах пищи за сегодняшний день.]
+    // #START_DATA_FETCHING: [Получение данных о приемах пищи за выбранный или сегодняшний день.]
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -26,10 +26,9 @@ export default async function NutritionPage() {
         return notFound();
     }
     
-    const today = new Date();
-    const meals = await getMealsForDate(today);
+    const dateString = searchParams?.date || new Date().toISOString().split('T')[0];
+    const meals = await getMealsForDate(dateString);
     // #END_DATA_FETCHING
-
 
     // #START_RENDER_BLOCK: [Рендеринг основной структуры страницы.]
     return (
